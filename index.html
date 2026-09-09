@@ -7,58 +7,333 @@
 
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:#f4f7fb;color:#18212f}
-header{background:#0f5f73;color:#fff;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+
+body{
+  margin:0;
+  font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;
+  background:#f4f7fb;
+  color:#18212f
+}
+
+header{
+  background:#0f5f73;
+  color:#fff;
+  padding:18px 24px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px;
+  flex-wrap:wrap
+}
+
 h1,h2,h3{margin:0 0 12px}
 header h1{font-size:21px}
-.wrap{max-width:1500px;margin:auto;padding:20px}
-nav{display:flex;gap:8px;flex-wrap:wrap}
-button{border:0;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:600;background:#e8eef4;color:#18212f}
-button.primary{background:#0f718a;color:white}
-button.danger{background:#fee2e2;color:#991b1b}
-button:disabled{opacity:.5;cursor:not-allowed}
-.tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
-.tab{background:white;border:1px solid #dce4ec}
-.tab.active{background:#0f5f73;color:#fff}
-.card{background:#fff;border:1px solid #dde5ed;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 2px 8px #17324d0a}
-.grid{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:12px}
-@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:600px){.grid{grid-template-columns:1fr}}
-label{font-size:13px;font-weight:700;display:block;margin-bottom:5px}
-input,select,textarea{width:100%;padding:9px;border:1px solid #ccd7e2;border-radius:7px;background:#fff;font:inherit}
+
+.wrap{
+  max-width:1500px;
+  margin:auto;
+  padding:20px
+}
+
+nav{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap
+}
+
+button{
+  border:0;
+  border-radius:8px;
+  padding:9px 13px;
+  cursor:pointer;
+  font-weight:600;
+  background:#e8eef4;
+  color:#18212f
+}
+
+button.primary{
+  background:#0f718a;
+  color:white
+}
+
+button.danger{
+  background:#fee2e2;
+  color:#991b1b
+}
+
+button:disabled{
+  opacity:.5;
+  cursor:not-allowed
+}
+
+.tabs{
+  display:flex;
+  gap:8px;
+  margin-bottom:18px;
+  flex-wrap:wrap
+}
+
+.tab{
+  background:white;
+  border:1px solid #dce4ec
+}
+
+.tab.active{
+  background:#0f5f73;
+  color:#fff
+}
+
+.card{
+  background:#fff;
+  border:1px solid #dde5ed;
+  border-radius:12px;
+  padding:16px;
+  margin-bottom:16px;
+  box-shadow:0 2px 8px #17324d0a
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(180px,1fr));
+  gap:12px
+}
+
+@media(max-width:900px){
+  .grid{grid-template-columns:repeat(2,1fr)}
+}
+
+@media(max-width:600px){
+  .grid{grid-template-columns:1fr}
+}
+
+label{
+  font-size:13px;
+  font-weight:700;
+  display:block;
+  margin-bottom:5px
+}
+
+input,select,textarea{
+  width:100%;
+  padding:9px;
+  border:1px solid #ccd7e2;
+  border-radius:7px;
+  background:#fff;
+  font:inherit
+}
+
 textarea{min-height:80px}
-table{border-collapse:collapse;width:100%;font-size:13px}
-th,td{border:1px solid #d9e2ea;padding:7px;text-align:center}
-th{background:#eef4f7;position:sticky;top:0;z-index:1}
+
+table{
+  border-collapse:collapse;
+  width:100%;
+  font-size:13px
+}
+
+th,td{
+  border:1px solid #d9e2ea;
+  padding:7px;
+  text-align:center
+}
+
+th{
+  background:#eef4f7;
+  position:sticky;
+  top:0;
+  z-index:2
+}
+
 .left{text-align:left}
-.scroll{overflow:auto;max-height:70vh}
-.badge{display:inline-block;padding:3px 7px;border-radius:20px;font-size:11px;font-weight:700}
-.D{background:#dff4ff;color:#075985}
-.N{background:#ede9fe;color:#5b21b6}
-.X{background:#fee2e2;color:#991b1b}
-.V{background:#dcfce7;color:#166534}
-.empty{color:#8a98a8}
-.actions{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
-.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
-@media(max-width:1000px){.stats{grid-template-columns:repeat(3,1fr)}}
-.stat{background:#f7fafc;border:1px solid #e0e7ef;border-radius:9px;padding:12px}
-.stat b{display:block;font-size:22px}
+
+.scroll{
+  overflow:auto;
+  max-height:70vh
+}
+
+.badge{
+  display:inline-block;
+  padding:4px 7px;
+  border-radius:20px;
+  font-size:11px;
+  font-weight:700;
+  white-space:nowrap
+}
+
+.D{
+  background:#dff4ff;
+  color:#075985
+}
+
+.N{
+  background:#ede9fe;
+  color:#5b21b6
+}
+
+.V{
+  background:#dcfce7;
+  color:#166534
+}
+
+.X{
+  background:#fee2e2;
+  color:#991b1b
+}
+
+.R{
+  background:#fff3cd;
+  color:#8a5a00
+}
+
+.P{
+  background:#fce7f3;
+  color:#9d174d
+}
+
+.empty{
+  color:#8a98a8
+}
+
+.day-weekend{
+  background:#faf5f5
+}
+
+.sunday{
+  background:#fff8f8
+}
+
+.sat{
+  background:#f7fbff
+}
+
+.actions{
+  display:flex;
+  gap:8px;
+  align-items:end;
+  flex-wrap:wrap
+}
+
+.stats{
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:10px
+}
+
+@media(max-width:1000px){
+  .stats{grid-template-columns:repeat(3,1fr)}
+}
+
+.stat{
+  background:#f7fafc;
+  border:1px solid #e0e7ef;
+  border-radius:9px;
+  padding:12px
+}
+
+.stat b{
+  display:block;
+  font-size:22px
+}
+
 .hidden{display:none}
-.notice{padding:10px;border-radius:8px;background:#fff7d6;border:1px solid #f0dc82}
-.ok{background:#e8f8ee;border-color:#a9dfbd}
-.err{background:#fff0f0;border-color:#efb1b1}
-.small{font-size:12px;color:#667585}
-.right{text-align:right}
-.danger-text{color:#b42318}
-.print-only{display:none}
+
+.notice{
+  padding:10px;
+  border-radius:8px;
+  background:#fff7d6;
+  border:1px solid #f0dc82;
+  margin-bottom:7px
+}
+
+.ok{
+  background:#e8f8ee;
+  border-color:#a9dfbd
+}
+
+.err{
+  background:#fff0f0;
+  border-color:#efb1b1
+}
+
+.small{
+  font-size:12px;
+  color:#667585
+}
+
+.legend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin:10px 0 15px
+}
+
+.calendar-table{
+  min-width:1200px
+}
+
+.calendar-table th:first-child,
+.calendar-table td:first-child{
+  position:sticky;
+  left:0;
+  z-index:3;
+  background:#fff
+}
+
+.calendar-table th:first-child{
+  background:#eef4f7;
+  z-index:5
+}
+
+.cell-stack{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  align-items:center
+}
+
+.req-note{
+  font-size:10px;
+  color:#7c3aed
+}
+
+.print-only{
+  display:none
+}
 
 @media print{
-body{background:#fff}
-.no-print,header,.tabs,.card:not(.print-card){display:none!important}
-.print-only{display:block}
-.wrap{padding:0}
-.scroll{max-height:none;overflow:visible}
-table{font-size:9px}
+  body{background:#fff}
+
+  .no-print,
+  header,
+  .tabs,
+  .card:not(.print-card){
+    display:none!important
+  }
+
+  .print-only{
+    display:block
+  }
+
+  .wrap{
+    padding:0
+  }
+
+  .scroll{
+    max-height:none;
+    overflow:visible
+  }
+
+  table{
+    font-size:8px
+  }
+
+  .calendar-table{
+    min-width:0
+  }
+
+  .calendar-table th:first-child,
+  .calendar-table td:first-child{
+    position:static
+  }
 }
 </style>
 </head>
@@ -69,7 +344,7 @@ table{font-size:9px}
   <div>
     <h1>Dialýza – plánování směn</h1>
     <div class="small" style="color:#d6edf3">
-      Jednostránková aplikace · Supabase
+      Plánování směn · Supabase
     </div>
   </div>
 
@@ -85,287 +360,449 @@ table{font-size:9px}
 <div id="msg" class="card no-print hidden"></div>
 
 <div class="tabs no-print">
- <button class="tab active" onclick="showTab('plan',this)">Plán</button>
- <button class="tab" onclick="showTab('nurses',this)">Sestry</button>
- <button class="tab" onclick="showTab('req',this)">Požadavky a dovolené</button>
- <button class="tab" onclick="showTab('stats',this)">Statistiky</button>
- <button class="tab" onclick="showTab('settings',this)">Nastavení</button>
+  <button class="tab active" onclick="showTab('plan',this)">
+    Plán
+  </button>
+
+  <button class="tab" onclick="showTab('nurses',this)">
+    Sestry
+  </button>
+
+  <button class="tab" onclick="showTab('req',this)">
+    Požadavky a dovolené
+  </button>
+
+  <button class="tab" onclick="showTab('stats',this)">
+    Statistiky
+  </button>
+
+  <button class="tab" onclick="showTab('settings',this)">
+    Nastavení
+  </button>
 </div>
 
-<!-- PLÁN -->
+
+<!-- ======================================================
+     PLÁN
+     ====================================================== -->
 
 <section id="plan">
 
- <div class="card">
+<div class="card">
 
   <div class="grid">
 
-   <div>
-    <label>Měsíc</label>
-    <input id="month" type="month" onchange="loadMonth()">
-   </div>
+    <div>
+      <label>Měsíc</label>
+      <input
+        id="month"
+        type="month"
+        onchange="loadMonth()"
+      >
+    </div>
 
-   <div>
-    <label>Fond hodin měsíce</label>
-    <input id="fund" type="number" min="0" step="1" value="168">
-   </div>
+    <div>
+      <label>Fond hodin měsíce</label>
+      <input
+        id="fund"
+        type="number"
+        min="0"
+        step="1"
+        value="168"
+      >
+    </div>
 
-   <div>
-    <label>Počet sester</label>
-    <input id="nurseCount" disabled>
-   </div>
+    <div>
+      <label>Počet aktivních sester</label>
+      <input
+        id="nurseCount"
+        disabled
+      >
+    </div>
 
-   <div class="actions">
-    <button class="primary" onclick="generate()">Generovat směny</button>
-    <button onclick="clearMonth()">Vymazat směny</button>
-   </div>
+    <div class="actions">
+      <button
+        class="primary"
+        onclick="generate()"
+      >
+        Generovat směny
+      </button>
+
+      <button onclick="clearMonth()">
+        Vymazat směny
+      </button>
+    </div>
 
   </div>
 
- </div>
+</div>
 
- <div class="card print-card">
+
+<div class="card print-card">
 
   <h2>Kalendář směn</h2>
 
+  <div class="legend">
+
+    <span class="badge D">DEN</span>
+
+    <span class="badge N">NOC</span>
+
+    <span class="badge V">DOV</span>
+
+    <span class="badge X">VOLNO</span>
+
+    <span class="badge R">OMEZENÍ</span>
+
+    <span class="badge P">PREFERENCE</span>
+
+  </div>
+
+  <div class="small" style="margin-bottom:12px">
+    Požadavky a dovolené zůstávají v kalendáři viditelné
+    i po vygenerování směn.
+  </div>
+
   <div id="calendar" class="scroll"></div>
 
- </div>
+</div>
 
 </section>
 
 
-<!-- SESTRY -->
+<!-- ======================================================
+     SESTRY
+     ====================================================== -->
 
 <section id="nurses" class="hidden">
 
- <div class="card">
+<div class="card">
 
   <div class="actions">
-   <button class="primary" onclick="addNurse()">+ Přidat sestru</button>
-   <span class="small">Výchozí stav obsahuje 9 sester.</span>
+
+    <button
+      class="primary"
+      onclick="addNurse()"
+    >
+      + Přidat sestru
+    </button>
+
+    <span class="small">
+      Úvazek 1 = plný úvazek,
+      0,75 = 75 %,
+      0,5 = 50 %.
+    </span>
+
   </div>
 
- </div>
+</div>
 
- <div class="card">
+
+<div class="card">
 
   <div class="scroll">
 
-   <table>
+    <table>
 
-    <thead>
-     <tr>
-      <th>Jméno</th>
-      <th>Úvazek</th>
-      <th>Akce</th>
-     </tr>
-    </thead>
+      <thead>
+        <tr>
+          <th class="left">Jméno</th>
+          <th>Úvazek</th>
+          <th>Akce</th>
+        </tr>
+      </thead>
 
-    <tbody id="nurseRows"></tbody>
+      <tbody id="nurseRows"></tbody>
 
-   </table>
+    </table>
 
   </div>
 
- </div>
+</div>
 
 </section>
 
 
-<!-- POŽADAVKY -->
+<!-- ======================================================
+     POŽADAVKY
+     ====================================================== -->
 
 <section id="req" class="hidden">
 
- <div class="card">
+
+<div class="card">
 
   <h2>Dovolená</h2>
 
   <div class="grid">
 
-   <div>
-    <label>Sestra</label>
-    <select id="leaveNurse"></select>
-   </div>
+    <div>
+      <label>Sestra</label>
 
-   <div>
-    <label>Od</label>
-    <input id="leaveFrom" type="date">
-   </div>
+      <select id="leaveNurse"></select>
+    </div>
 
-   <div>
-    <label>Do</label>
-    <input id="leaveTo" type="date">
-   </div>
+    <div>
+      <label>Od</label>
 
-   <div>
-    <label>Započítat do fondu</label>
-    <select id="leaveFund">
-     <option value="1">Ano</option>
-     <option value="0">Ne</option>
-    </select>
-   </div>
+      <input
+        id="leaveFrom"
+        type="date"
+      >
+    </div>
+
+    <div>
+      <label>Do</label>
+
+      <input
+        id="leaveTo"
+        type="date"
+      >
+    </div>
+
+    <div>
+      <label>Započítat dovolenou do fondu</label>
+
+      <select id="leaveFund">
+        <option value="1">Ano</option>
+        <option value="0">Ne</option>
+      </select>
+    </div>
 
   </div>
 
   <br>
 
-  <button class="primary" onclick="addLeave()">Přidat dovolenou</button>
+  <button
+    class="primary"
+    onclick="addLeave()"
+  >
+    Přidat dovolenou
+  </button>
 
-  <div id="leaveList" style="margin-top:14px"></div>
+  <div
+    id="leaveList"
+    style="margin-top:14px"
+  ></div>
 
- </div>
+</div>
 
 
- <div class="card">
+<div class="card">
 
-  <h2>Individuální požadavek / omezení</h2>
+  <h2>Požadavek / omezení</h2>
 
   <div class="grid">
 
-   <div>
-    <label>Sestra</label>
-    <select id="reqNurse"></select>
-   </div>
+    <div>
+      <label>Sestra</label>
 
-   <div>
-    <label>Datum</label>
-    <input id="reqDate" type="date">
-   </div>
+      <select id="reqNurse"></select>
+    </div>
 
-   <div>
-    <label>Typ</label>
+    <div>
+      <label>Datum</label>
 
-    <select id="reqType">
-     <option value="off">Nemůže pracovat</option>
-     <option value="day">Nemůže denní</option>
-     <option value="night">Nemůže noční</option>
-     <option value="preferDay">Preferuje denní</option>
-     <option value="preferNight">Preferuje noční</option>
-    </select>
+      <input
+        id="reqDate"
+        type="date"
+      >
+    </div>
 
-   </div>
+    <div>
+      <label>Typ požadavku</label>
 
-   <div>
-    <label>Poznámka</label>
-    <input id="reqNote">
-   </div>
+      <select id="reqType">
+
+        <option value="off">
+          Nemůže pracovat
+        </option>
+
+        <option value="day">
+          Nemůže DEN
+        </option>
+
+        <option value="night">
+          Nemůže NOC
+        </option>
+
+        <option value="preferDay">
+          Preferuje DEN
+        </option>
+
+        <option value="preferNight">
+          Preferuje NOC
+        </option>
+
+      </select>
+
+    </div>
+
+    <div>
+      <label>Poznámka</label>
+
+      <input id="reqNote">
+    </div>
 
   </div>
 
   <br>
 
-  <button class="primary" onclick="addReq()">Přidat požadavek</button>
+  <button
+    class="primary"
+    onclick="addReq()"
+  >
+    Přidat požadavek
+  </button>
 
-  <div id="reqList" style="margin-top:14px"></div>
+  <div
+    id="reqList"
+    style="margin-top:14px"
+  ></div>
 
- </div>
+</div>
 
 </section>
 
 
-<!-- STATISTIKY -->
+<!-- ======================================================
+     STATISTIKY
+     ====================================================== -->
 
 <section id="stats" class="hidden">
 
- <div class="card">
+<div class="card">
 
   <h2>Statistiky</h2>
 
   <div id="statsBox" class="stats"></div>
 
- </div>
+</div>
 
- <div class="card">
+
+<div class="card">
 
   <div class="scroll">
 
-   <table>
+    <table>
 
-    <thead>
-     <tr>
-      <th>Sestra</th>
-      <th>Hodiny</th>
-      <th>Směny</th>
-      <th>Denní</th>
-      <th>Noční</th>
-      <th>Víkendy</th>
-      <th>Dovolená</th>
-      <th>Odchylka od cíle</th>
-     </tr>
-    </thead>
+      <thead>
 
-    <tbody id="statsRows"></tbody>
+        <tr>
+          <th class="left">Sestra</th>
+          <th>Hodiny</th>
+          <th>Směny</th>
+          <th>DEN</th>
+          <th>NOC</th>
+          <th>Víkendy</th>
+          <th>Dovolená</th>
+          <th>Cíl hodin</th>
+          <th>Rozdíl</th>
+        </tr>
 
-   </table>
+      </thead>
+
+      <tbody id="statsRows"></tbody>
+
+    </table>
 
   </div>
 
- </div>
+</div>
 
 </section>
 
 
-<!-- NASTAVENÍ -->
+<!-- ======================================================
+     NASTAVENÍ
+     ====================================================== -->
 
 <section id="settings" class="hidden">
 
- <div class="card">
+<div class="card">
 
   <h2>Nastavení směn</h2>
 
   <div class="grid">
 
-   <div>
-    <label>Denní směna (h)</label>
-    <input id="dayHours" type="number" value="12">
-   </div>
+    <div>
+      <label>Denní směna – hodiny</label>
 
-   <div>
-    <label>Noční směna (h)</label>
-    <input id="nightHours" type="number" value="12">
-   </div>
+      <input
+        id="dayHours"
+        type="number"
+        value="12"
+      >
+    </div>
 
-   <div>
-    <label>Noční do půlnoci (h)</label>
-    <input id="halfNightHours" type="number" value="6">
-   </div>
+    <div>
+      <label>Noční směna – hodiny</label>
 
-   <div>
-    <label>Sestry na denní</label>
-    <input id="dayNeed" type="number" value="3">
-   </div>
+      <input
+        id="nightHours"
+        type="number"
+        value="12"
+      >
+    </div>
 
-   <div>
-    <label>Sestry na noční</label>
-    <input id="nightNeed" type="number" value="2">
-   </div>
+    <div>
+      <label>Noční do půlnoci – hodiny</label>
+
+      <input
+        id="halfNightHours"
+        type="number"
+        value="6"
+      >
+    </div>
+
+    <div>
+      <label>Počet sester – DEN</label>
+
+      <input
+        id="dayNeed"
+        type="number"
+        value="3"
+      >
+    </div>
+
+    <div>
+      <label>Počet sester – NOC</label>
+
+      <input
+        id="nightNeed"
+        type="number"
+        value="2"
+      >
+    </div>
 
   </div>
 
   <p class="small">
-   Sobota = pouze denní.
-   Neděle = pouze noční.
-   Generátor hlídá zákaz 3 směn za sebou
-   a zákaz denní po noční.
-   Dovolená se pro odpočinek bere jako obsazený den;
-   její započtení do fondu je samostatné.
+    Pondělí až pátek: 3 DEN + 2 NOC.
+    Sobota: 3 DEN.
+    Neděle: 2 NOC.
   </p>
 
- </div>
+</div>
 
 
- <div class="card">
+<div class="card">
 
-  <h2>Supabase</h2>
+  <h2>Pravidla generátoru</h2>
 
-  <p class="small">
-   Supabase je připojeno přímo v tomto HTML.
-   Publishable key je určena pro použití v prohlížeči.
-   Nikdy sem nevkládej service_role nebo secret key.
-  </p>
+  <ul>
+    <li>Nejvýše 2 směny za sebou.</li>
+    <li>Po noční nesmí následující den na denní.</li>
+    <li>Dovolená blokuje směnu.</li>
+    <li>Požadavek „nemůže pracovat“ blokuje směnu.</li>
+    <li>„Nemůže DEN“ blokuje pouze DEN.</li>
+    <li>„Nemůže NOC“ blokuje pouze NOC.</li>
+    <li>Preference ovlivňuje výběr, ale není povinná.</li>
+    <li>Směny se rozdělují podle úvazků.</li>
+    <li>Víkendové směny se také snažíme rozdělit rovnoměrně.</li>
+  </ul>
 
- </div>
+</div>
 
 </section>
 
@@ -387,12 +824,12 @@ const SUPABASE_ANON_KEY =
 "sb_publishable_HeOLseijNWs_dERdcKvNBw_1RKDx7A9";
 
 const sb =
-(SUPABASE_URL && SUPABASE_ANON_KEY)
-? window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY
-  )
-: null;
+  (SUPABASE_URL && SUPABASE_ANON_KEY)
+  ? window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY
+    )
+  : null;
 
 
 /* =========================================================
@@ -403,6 +840,7 @@ let nurses = [];
 let leaves = [];
 let requests = [];
 let shifts = {};
+
 let monthKey = "";
 let monthFund = 168;
 
@@ -421,96 +859,157 @@ let settings = {
 
 const $ = id => document.getElementById(id);
 
+
 function uid(){
 
-  return crypto.randomUUID
-    ? crypto.randomUUID()
-    : Date.now()+"-"+Math.random();
+  if(window.crypto && crypto.randomUUID)
+    return crypto.randomUUID();
+
+  return Date.now()+"-"+Math.random();
 
 }
+
 
 function esc(s){
 
   return String(s ?? "").replace(
     /[&<>"']/g,
     c => ({
-      '&':'&amp;',
-      '<':'&lt;',
-      '>':'&gt;',
-      '"':'&quot;',
-      "'":'&#039;'
+      "&":"&amp;",
+      "<":"&lt;",
+      ">":"&gt;",
+      '"':"&quot;",
+      "'":"&#039;"
     }[c])
   );
 
 }
 
-function daysInMonth(y,m){
 
-  return new Date(y,m,0).getDate();
+function daysInMonth(year,month){
 
-}
-
-function dateStr(y,m,d){
-
-  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-
-}
-
-function weekend(d){
-
-  let x = new Date(d+"T12:00:00").getDay();
-
-  return x===0 || x===6;
+  return new Date(
+    year,
+    month,
+    0
+  ).getDate();
 
 }
 
-function isLeave(nid,d){
+
+function dateStr(year,month,day){
+
+  return (
+    year +
+    "-" +
+    String(month).padStart(2,"0") +
+    "-" +
+    String(day).padStart(2,"0")
+  );
+
+}
+
+
+function getDayName(date){
+
+  return [
+    "Ne",
+    "Po",
+    "Út",
+    "St",
+    "Čt",
+    "Pá",
+    "So"
+  ][
+    new Date(
+      date+"T12:00:00"
+    ).getDay()
+  ];
+
+}
+
+
+function getDayNumber(date){
+
+  return new Date(
+    date+"T12:00:00"
+  ).getDay();
+
+}
+
+
+function isWeekend(date){
+
+  const d=getDayNumber(date);
+
+  return d===0 || d===6;
+
+}
+
+
+function isLeave(nurseId,date){
 
   return leaves.some(
-    x => x.nurse_id===nid &&
-         d>=x.from &&
-         d<=x.to
+    x =>
+      x.nurse_id===nurseId &&
+      date>=x.from &&
+      date<=x.to
   );
 
 }
 
-function leaveObj(nid,d){
+
+function getLeave(nurseId,date){
 
   return leaves.find(
-    x => x.nurse_id===nid &&
-         d>=x.from &&
-         d<=x.to
+    x =>
+      x.nurse_id===nurseId &&
+      date>=x.from &&
+      date<=x.to
   );
 
 }
 
-function req(nid,d){
+
+function getRequests(nurseId,date){
 
   return requests.filter(
-    x => x.nurse_id===nid &&
-         x.date===d
+    x =>
+      x.nurse_id===nurseId &&
+      x.date===date
   );
+
+}
+
+
+function getShift(date,nurseId){
+
+  return shifts[date]?.[nurseId] || null;
 
 }
 
 
 /* =========================================================
-   ZÁKLADNÍ UI
+   UI
    ========================================================= */
 
-function showTab(id,btn){
+function showTab(id,button){
 
   document
     .querySelectorAll("section")
-    .forEach(x=>x.classList.add("hidden"));
+    .forEach(
+      x=>x.classList.add("hidden")
+    );
 
   $(id).classList.remove("hidden");
 
   document
     .querySelectorAll(".tab")
-    .forEach(x=>x.classList.remove("active"));
+    .forEach(
+      x=>x.classList.remove("active")
+    );
 
-  btn.classList.add("active");
+  button.classList.add("active");
 
   if(id==="stats")
     renderStats();
@@ -518,51 +1017,27 @@ function showTab(id,btn){
 }
 
 
-function message(t,kind=""){
+function message(text,type=""){
 
-  let e=$("msg");
+  const e=$("msg");
 
-  e.innerHTML=t;
+  e.innerHTML=text;
 
-  e.className="card no-print "+(kind||"");
+  e.className=
+    "card no-print " +
+    type;
 
   e.classList.remove("hidden");
 
-  setTimeout(
-    ()=>e.classList.add("hidden"),
-    6000
+  clearTimeout(
+    window.msgTimer
   );
 
-}
-
-
-/* =========================================================
-   INIT
-   ========================================================= */
-
-function init(){
-
-  let now=new Date();
-
-  $("month").value =
-    `${now.getFullYear()}-${String(
-      now.getMonth()+1
-    ).padStart(2,"0")}`;
-
-  nurses =
-    Array.from(
-      {length:9},
-      (_,i)=>({
-        id:uid(),
-        name:`Sestra ${i+1}`,
-        fraction:1
-      })
+  window.msgTimer=
+    setTimeout(
+      ()=>e.classList.add("hidden"),
+      7000
     );
-
-  renderNurses();
-  renderReq();
-  loadMonth();
-  renderCalendar();
 
 }
 
@@ -575,41 +1050,57 @@ function renderNurses(){
 
   $("nurseCount").value=nurses.length;
 
-  $("nurseRows").innerHTML =
-    nurses.map((n,i)=>`
+  $("nurseRows").innerHTML=
+    nurses.map(
+      (n,i)=>`
 
       <tr>
 
-        <td>
+        <td class="left">
+
           <input
             value="${esc(n.name)}"
-            onchange="nurses[${i}].name=this.value"
+            onchange="
+              nurses[${i}].name=this.value;
+              renderCalendar();
+              renderStats();
+            "
           >
+
         </td>
 
         <td>
+
           <input
             type="number"
-            min=".1"
+            min="0.1"
             max="1"
-            step=".1"
+            step="0.05"
             value="${n.fraction}"
-            onchange="nurses[${i}].fraction=+this.value"
+            onchange="
+              nurses[${i}].fraction=+this.value;
+              renderStats();
+            "
           >
+
         </td>
 
         <td>
+
           <button
             class="danger"
-            onclick="removeNurse('${n.id}')"
+            onclick="
+              removeNurse('${n.id}')
+            "
           >
             Smazat
           </button>
+
         </td>
 
       </tr>
-
-    `).join("");
+    `
+    ).join("");
 
   fillSelects();
 
@@ -619,15 +1110,20 @@ function renderNurses(){
 function addNurse(){
 
   nurses.push({
+
     id:uid(),
-    name:`Nová sestra ${nurses.length+1}`,
+
+    name:
+      `Nová sestra ${nurses.length+1}`,
+
     fraction:1
+
   });
 
   renderNurses();
 
   message(
-    "Sestra byla přidána. Nezapomeň kliknout na Uložit.",
+    "Sestra byla přidána. Klikni na Uložit.",
     "ok"
   );
 
@@ -636,42 +1132,48 @@ function addNurse(){
 
 function removeNurse(id){
 
-  let n=nurses.find(x=>x.id===id);
+  const nurse=
+    nurses.find(
+      x=>x.id===id
+    );
 
-  if(!n)return;
+  if(!nurse)return;
 
   if(
     !confirm(
-      `Opravdu odstranit sestru ${n.name}?`
+      "Opravdu odstranit sestru "+
+      nurse.name+"?"
     )
-  )return;
+  )
+    return;
 
-  nurses=nurses.filter(x=>x.id!==id);
+  nurses=
+    nurses.filter(
+      x=>x.id!==id
+    );
 
-  deleteFromState(id);
+  leaves=
+    leaves.filter(
+      x=>x.nurse_id!==id
+    );
+
+  requests=
+    requests.filter(
+      x=>x.nurse_id!==id
+    );
+
+  Object.keys(shifts)
+    .forEach(date=>{
+
+      if(shifts[date]?.[id])
+        delete shifts[date][id];
+
+    });
 
   renderNurses();
   renderReq();
   renderCalendar();
   renderStats();
-
-}
-
-
-function deleteFromState(id){
-
-  leaves =
-    leaves.filter(x=>x.nurse_id!==id);
-
-  requests =
-    requests.filter(x=>x.nurse_id!==id);
-
-  Object.keys(shifts).forEach(d=>{
-
-    if(shifts[d]?.[id])
-      delete shifts[d][id];
-
-  });
 
 }
 
@@ -682,11 +1184,13 @@ function deleteFromState(id){
 
 function fillSelects(){
 
-  let html=nurses.map(
-    n=>`<option value="${n.id}">
-      ${esc(n.name)}
-    </option>`
-  ).join("");
+  const html=
+    nurses.map(
+      n=>
+        `<option value="${n.id}">
+          ${esc(n.name)}
+        </option>`
+    ).join("");
 
   $("leaveNurse").innerHTML=html;
   $("reqNurse").innerHTML=html;
@@ -700,45 +1204,61 @@ function fillSelects(){
 
 function addLeave(){
 
-  let nurse_id=$("leaveNurse").value;
-  let from=$("leaveFrom").value;
-  let to=$("leaveTo").value;
+  const nurse_id=
+    $("leaveNurse").value;
+
+  const from=
+    $("leaveFrom").value;
+
+  const to=
+    $("leaveTo").value;
 
   if(!from || !to){
 
     message(
-      "Vyplň datum od a do.",
+      "Vyplň datum OD a DO.",
       "err"
     );
 
     return;
+
   }
 
   if(from>to){
 
     message(
-      "Datum OD nemůže být později než datum DO.",
+      "Datum OD nesmí být později než datum DO.",
       "err"
     );
 
     return;
+
   }
 
   leaves.push({
 
     id:uid(),
+
     nurse_id,
+
     from,
+
     to,
-    count_fund:$("leaveFund").value==="1"
+
+    count_fund:
+      $("leaveFund").value==="1"
 
   });
 
+  $("leaveFrom").value="";
+  $("leaveTo").value="";
+
   renderReq();
   renderCalendar();
+  renderStats();
 
   message(
-    "Dovolená přidána.",
+    "Dovolená byla přidána.",
     "ok"
   );
 
@@ -748,116 +1268,50 @@ function addLeave(){
 function removeLeave(id){
 
   leaves=
-    leaves.filter(x=>x.id!==id);
+    leaves.filter(
+      x=>x.id!==id
+    );
 
   renderReq();
   renderCalendar();
+  renderStats();
 
 }
 
 
-function renderReq(){
-
-  fillSelects();
-
-  $("leaveList").innerHTML =
-    leaves.length
-    ? leaves.map(x=>{
-
-        let n=nurses.find(
-          n=>n.id===x.nurse_id
-        );
-
-        return `
-        <div class="notice" style="margin-bottom:6px">
-
-          <b>${esc(n?.name||"Neznámá sestra")}</b>
-          :
-          ${x.from} – ${x.to}
-
-          · fond:
-          ${x.count_fund ? "ano" : "ne"}
-
-          <button
-            class="danger"
-            style="float:right"
-            onclick="removeLeave('${x.id}')"
-          >
-            Smazat
-          </button>
-
-        </div>
-        `;
-
-      }).join("")
-    : `<span class="small">Žádná dovolená.</span>`;
-
-
-  $("reqList").innerHTML =
-    requests.length
-    ? requests.map(x=>{
-
-        let n=nurses.find(
-          n=>n.id===x.nurse_id
-        );
-
-        let labels={
-          off:"Nemůže pracovat",
-          day:"Nemůže denní",
-          night:"Nemůže noční",
-          preferDay:"Preferuje denní",
-          preferNight:"Preferuje noční"
-        };
-
-        return `
-        <div class="notice" style="margin-bottom:6px">
-
-          <b>${esc(n?.name||"Neznámá sestra")}</b>
-          · ${x.date}
-          · ${labels[x.type]||x.type}
-
-          ${x.note
-            ? " · "+esc(x.note)
-            : ""}
-
-          <button
-            class="danger"
-            style="float:right"
-            onclick="removeReq('${x.id}')"
-          >
-            Smazat
-          </button>
-
-        </div>
-        `;
-
-      }).join("")
-    : `<span class="small">Žádné požadavky.</span>`;
-
-}
-
+/* =========================================================
+   POŽADAVKY
+   ========================================================= */
 
 function addReq(){
 
-  let nurse_id=$("reqNurse").value;
-  let date=$("reqDate").value;
+  const nurse_id=
+    $("reqNurse").value;
+
+  const date=
+    $("reqDate").value;
 
   if(!date){
 
     message(
-      "Vyber datum požadavku.",
+      "Vyber datum.",
       "err"
     );
 
     return;
+
   }
 
   requests.push({
 
     id:uid(),
+
     nurse_id,
+
     date,
+
     type:$("reqType").value,
+
     note:$("reqNote").value
 
   });
@@ -866,9 +1320,10 @@ function addReq(){
   $("reqNote").value="";
 
   renderReq();
+  renderCalendar();
 
   message(
-    "Požadavek přidán.",
+    "Požadavek byl přidán.",
     "ok"
   );
 
@@ -878,9 +1333,158 @@ function addReq(){
 function removeReq(id){
 
   requests=
-    requests.filter(x=>x.id!==id);
+    requests.filter(
+      x=>x.id!==id
+    );
 
   renderReq();
+  renderCalendar();
+
+}
+
+
+/* =========================================================
+   ZOBRAZENÍ POŽADAVKŮ
+   ========================================================= */
+
+function requestLabel(type){
+
+  const labels={
+
+    off:"VOLNO",
+
+    day:"bez DEN",
+
+    night:"bez NOC",
+
+    preferDay:"prefer DEN",
+
+    preferNight:"prefer NOC"
+
+  };
+
+  return labels[type] || type;
+
+}
+
+
+function requestClass(type){
+
+  if(type==="off")
+    return "X";
+
+  if(
+    type==="preferDay" ||
+    type==="preferNight"
+  )
+    return "P";
+
+  return "R";
+
+}
+
+
+function renderReq(){
+
+  fillSelects();
+
+
+  $("leaveList").innerHTML=
+    leaves.length
+    ? leaves.map(
+        x=>{
+
+          const nurse=
+            nurses.find(
+              n=>n.id===x.nurse_id
+            );
+
+          return `
+            <div class="notice">
+
+              <b>
+                ${esc(
+                  nurse?.name ||
+                  "Neznámá sestra"
+                )}
+              </b>
+
+              · ${x.from}
+              – ${x.to}
+
+              · fond:
+              ${x.count_fund
+                ? "ano"
+                : "ne"}
+
+              <button
+                class="danger"
+                style="float:right"
+                onclick="
+                  removeLeave('${x.id}')
+                "
+              >
+                Smazat
+              </button>
+
+            </div>
+          `;
+
+        }
+      ).join("")
+    : `<span class="small">
+         Žádná dovolená.
+       </span>`;
+
+
+  $("reqList").innerHTML=
+    requests.length
+    ? requests.map(
+        x=>{
+
+          const nurse=
+            nurses.find(
+              n=>n.id===x.nurse_id
+            );
+
+          return `
+            <div class="notice">
+
+              <b>
+                ${esc(
+                  nurse?.name ||
+                  "Neznámá sestra"
+                )}
+              </b>
+
+              · ${x.date}
+
+              · ${requestLabel(x.type)}
+
+              ${
+                x.note
+                ? " · "+esc(x.note)
+                : ""
+              }
+
+              <button
+                class="danger"
+                style="float:right"
+                onclick="
+                  removeReq('${x.id}')
+                "
+              >
+                Smazat
+              </button>
+
+            </div>
+          `;
+
+        }
+      ).join("")
+    : `<span class="small">
+         Žádné požadavky.
+       </span>`;
 
 }
 
@@ -894,7 +1498,7 @@ function loadMonth(){
   monthKey=$("month").value;
 
   monthFund=
-    +$("fund").value || 168;
+    Number($("fund").value) || 168;
 
   renderCalendar();
   renderStats();
@@ -906,98 +1510,136 @@ function loadMonth(){
 
 
 /* =========================================================
-   KONTROLA, ZDA LZE SESTRU PŘIDĚLIT
+   KONTROLA SMĚNY
    ========================================================= */
 
-function shiftAllowed(n,date,type){
+function shiftAllowed(
+  nurse,
+  date,
+  type
+){
 
-  /* dovolená */
+  /*
+   * DOVOLENÁ
+   */
 
-  if(isLeave(n.id,date))
+  if(isLeave(nurse.id,date))
     return false;
 
 
-  /* individuální požadavky */
+  /*
+   * POŽADAVKY
+   */
 
-  let rr=req(n.id,date);
+  const rr=
+    getRequests(
+      nurse.id,
+      date
+    );
+
 
   if(
-    rr.some(x=>x.type==="off")
+    rr.some(
+      x=>x.type==="off"
+    )
   )
     return false;
+
 
   if(
     type==="D" &&
-    rr.some(x=>x.type==="day")
+    rr.some(
+      x=>x.type==="day"
+    )
   )
     return false;
+
 
   if(
     type==="N" &&
-    rr.some(x=>x.type==="night")
+    rr.some(
+      x=>x.type==="night"
+    )
   )
     return false;
 
 
   /*
-   * Nesmí mít dvě směny ve stejný den.
+   * Jedna směna za den.
    */
 
   if(
-    shifts[date]?.[n.id]
+    getShift(
+      date,
+      nurse.id
+    )
   )
     return false;
 
 
   /*
-   * Zákaz denní po noční.
+   * DEN po NOCI není povolen.
    */
 
-  let dt=new Date(
-    date+"T12:00:00"
-  );
+  const current=
+    new Date(
+      date+"T12:00:00"
+    );
 
-  let previous=
-    new Date(dt);
+  const previous=
+    new Date(current);
 
   previous.setDate(
     previous.getDate()-1
   );
 
-  let prev=
+  const previousDate=
     previous
       .toISOString()
       .slice(0,10);
 
+
   if(
     type==="D" &&
-    shifts[prev]?.[n.id]==="N"
+    getShift(
+      previousDate,
+      nurse.id
+    )==="N"
   )
     return false;
 
 
   /*
-   * Kontrola tří směn za sebou.
-   *
-   * Když by předchozí dva dny měla směnu,
-   * třetí směnu nedostane.
+   * Max 2 směny za sebou.
    */
 
-  let d1=new Date(dt);
-  d1.setDate(d1.getDate()-1);
+  const d1=
+    new Date(current);
 
-  let d2=new Date(dt);
-  d2.setDate(d2.getDate()-2);
+  d1.setDate(
+    d1.getDate()-1
+  );
 
-  let s1=
-    shifts[
-      d1.toISOString().slice(0,10)
-    ]?.[n.id];
+  const d2=
+    new Date(current);
 
-  let s2=
-    shifts[
-      d2.toISOString().slice(0,10)
-    ]?.[n.id];
+  d2.setDate(
+    d2.getDate()-2
+  );
+
+
+  const s1=
+    getShift(
+      d1.toISOString().slice(0,10),
+      nurse.id
+    );
+
+  const s2=
+    getShift(
+      d2.toISOString().slice(0,10),
+      nurse.id
+    );
+
 
   if(s1 && s2)
     return false;
@@ -1009,354 +1651,520 @@ function shiftAllowed(n,date,type){
 
 
 /* =========================================================
+   STATISTIKY PRO GENERÁTOR
+   ========================================================= */
+
+function getNurseStats(nurse){
+
+  let hours=0;
+  let count=0;
+  let day=0;
+  let night=0;
+  let weekends=0;
+
+
+  Object.entries(shifts)
+    .forEach(
+      ([date,ss])=>{
+
+        const type=
+          ss?.[nurse.id];
+
+        if(!type)
+          return;
+
+
+        count++;
+
+
+        if(type==="D"){
+
+          day++;
+
+          hours+=
+            settings.dayHours;
+
+        }else{
+
+          night++;
+
+          hours+=
+            settings.nightHours;
+
+        }
+
+
+        if(
+          isWeekend(date)
+        )
+          weekends++;
+
+      }
+    );
+
+
+  return {
+    hours,
+    count,
+    day,
+    night,
+    weekends
+  };
+
+}
+
+
+/* =========================================================
+   SKÓRE SPRAVEDLNOSTI
+   ========================================================= */
+
+function fairScore(
+  nurse,
+  date,
+  type
+){
+
+  const st=
+    getNurseStats(nurse);
+
+
+  const fraction=
+    Number(nurse.fraction) || 1;
+
+
+  const target=
+    monthFund*fraction;
+
+
+  const shiftHours=
+    type==="D"
+    ? settings.dayHours
+    : settings.nightHours;
+
+
+  const projected=
+    st.hours+
+    shiftHours;
+
+
+  /*
+   * Poměr k cílovému fondu.
+   */
+
+  const ratio=
+    target>0
+    ? projected/target
+    : projected/168;
+
+
+  let score=
+    ratio*100;
+
+
+  /*
+   * Lehké vyrovnání počtu směn.
+   */
+
+  score+=
+    st.count*0.3;
+
+
+  /*
+   * Víkendy.
+   */
+
+  score+=
+    st.weekends*1.5;
+
+
+  /*
+   * DEN/NOC.
+   */
+
+  if(type==="D")
+    score+=st.day*0.2;
+  else
+    score+=st.night*0.2;
+
+
+  /*
+   * Silná priorita pro sestry,
+   * které zatím nemají žádnou směnu.
+   */
+
+  if(st.count===0)
+    score-=35;
+
+
+  /*
+   * Preference.
+   */
+
+  const rr=
+    getRequests(
+      nurse.id,
+      date
+    );
+
+
+  if(
+    type==="D" &&
+    rr.some(
+      x=>x.type==="preferDay"
+    )
+  )
+    score-=15;
+
+
+  if(
+    type==="N" &&
+    rr.some(
+      x=>x.type==="preferNight"
+    )
+  )
+    score-=15;
+
+
+  return score;
+
+}
+
+
+/* =========================================================
+   PŘIDĚLENÍ SMĚNY
+   ========================================================= */
+
+function assignShift(
+  date,
+  type,
+  needed,
+  warnings
+){
+
+  if(!shifts[date])
+    shifts[date]={};
+
+
+  let candidates=
+    nurses.filter(
+      n=>
+        shiftAllowed(
+          n,
+          date,
+          type
+        )
+    );
+
+
+  candidates.sort(
+    (a,b)=>
+      fairScore(
+        a,
+        date,
+        type
+      )
+      -
+      fairScore(
+        b,
+        date,
+        type
+      )
+  );
+
+
+  const selected=
+    candidates.slice(
+      0,
+      needed
+    );
+
+
+  selected.forEach(
+    nurse=>{
+      shifts[date][nurse.id]=type;
+    }
+  );
+
+
+  if(
+    selected.length<needed
+  ){
+
+    warnings.push(
+      `${date}: ${
+        type==="D"
+        ? "DEN"
+        : "NOC"
+      } – potřebujeme ${needed},
+      dostupných je ${selected.length}.`
+    );
+
+  }
+
+}
+
+
+/* =========================================================
    GENERÁTOR
    ========================================================= */
 
 function generate(){
 
-  monthKey=$("month").value;
+  monthKey=
+    $("month").value;
+
 
   if(!monthKey){
 
     message(
-      "Nejdřív vyber měsíc.",
+      "Nejdříve vyber měsíc.",
       "err"
     );
 
     return;
+
   }
 
+
   monthFund=
-    +$("fund").value || 168;
+    Number(
+      $("fund").value
+    ) || 168;
+
 
   settings.dayHours=
-    +$("dayHours").value || 12;
+    Number(
+      $("dayHours").value
+    ) || 12;
+
 
   settings.nightHours=
-    +$("nightHours").value || 12;
+    Number(
+      $("nightHours").value
+    ) || 12;
+
 
   settings.halfNightHours=
-    +$("halfNightHours").value || 6;
+    Number(
+      $("halfNightHours").value
+    ) || 6;
+
 
   settings.dayNeed=
-    +$("dayNeed").value || 3;
+    Number(
+      $("dayNeed").value
+    ) || 3;
+
 
   settings.nightNeed=
-    +$("nightNeed").value || 2;
+    Number(
+      $("nightNeed").value
+    ) || 2;
 
 
   /*
-   * Začínáme znovu.
+   * Nový plán.
    */
 
   shifts={};
 
 
-  let [y,m]=
-    monthKey.split("-").map(Number);
-
-  let len=
-    daysInMonth(y,m);
-
-  let warnings=[];
-
-
-  /*
-   * Výpočet současného zatížení sestry.
-   */
-
-  function nurseStats(n){
-
-    let hours=0;
-    let count=0;
-    let weekends=0;
-    let day=0;
-    let night=0;
-
-    Object.entries(shifts)
-      .forEach(([date,ss])=>{
-
-        let s=ss[n.id];
-
-        if(!s)return;
-
-        count++;
-
-        if(s==="D"){
-          hours+=settings.dayHours;
-          day++;
-        }else{
-          hours+=settings.nightHours;
-          night++;
-        }
-
-        if(weekend(date))
-          weekends++;
-
-      });
-
-    return {
-      hours,
-      count,
-      weekends,
-      day,
-      night
-    };
-
-  }
+  const [
+    year,
+    month
+  ]=
+    monthKey
+      .split("-")
+      .map(Number);
 
 
-  /*
-   * Čím nižší skóre, tím větší priorita.
-   *
-   * Důležité:
-   * - sestra s 0 směnami dostane velkou prioritu
-   * - respektuje úvazek
-   * - vyrovnává hodiny
-   * - vyrovnává víkendy
-   * - lehce vyrovnává den/noční
-   */
-
-  function fairScore(n,date,type){
-
-    let st=
-      nurseStats(n);
-
-    let target=
-      monthFund *
-      Number(n.fraction||1);
-
-    /*
-     * Cílové hodiny.
-     */
-
-    let projected=
-      st.hours +
-      (
-        type==="D"
-        ? settings.dayHours
-        : settings.nightHours
-      );
-
-    let ratio=
-      target>0
-      ? projected/target
-      : projected/168;
-
-
-    let score=
-      ratio*100;
-
-
-    /*
-     * Počet směn jako vedlejší kritérium.
-     */
-
-    score +=
-      st.count*0.4;
-
-
-    /*
-     * Víkendy se snažíme rozdělit.
-     */
-
-    score +=
-      st.weekends*1.5;
-
-
-    /*
-     * Vyrovnání denních/nočních.
-     */
-
-    if(type==="D")
-      score += st.day*0.15;
-    else
-      score += st.night*0.15;
-
-
-    /*
-     * Sestra s nulou má silnou prioritu.
-     */
-
-    if(st.count===0)
-      score-=40;
-
-
-    /*
-     * Preferované směny.
-     */
-
-    let rr=req(n.id,date);
-
-    if(
-      type==="D" &&
-      rr.some(x=>x.type==="preferDay")
-    )
-      score-=12;
-
-    if(
-      type==="N" &&
-      rr.some(x=>x.type==="preferNight")
-    )
-      score-=12;
-
-
-    return score;
-
-  }
-
-
-  /*
-   * Přidělení konkrétní směny.
-   */
-
-  function assign(date,type,need){
-
-    let candidates=
-      nurses.filter(
-        n=>shiftAllowed(
-          n,
-          date,
-          type
-        )
-      );
-
-
-    candidates.sort(
-      (a,b)=>
-        fairScore(a,date,type) -
-        fairScore(b,date,type)
+  const totalDays=
+    daysInMonth(
+      year,
+      month
     );
 
 
-    if(
-      candidates.length<need
-    ){
-
-      warnings.push(
-        `${date}: ${
-          type==="D"
-          ? "denní"
-          : "noční"
-        } potřebuje ${need},
-        dostupných je pouze
-        ${candidates.length}`
-      );
-
-    }
+  const warnings=[];
 
 
-    shifts[date] =
-      shifts[date] || {};
+  /*
+   * DŮLEŽITÉ:
+   *
+   * Nejdříve plánujeme dny s nejmenší
+   * možností výběru.
+   *
+   * Neděle = pouze NOC
+   * Sobota = pouze DEN
+   */
 
 
-    /*
-     * Přidělujeme pouze tolik sester,
-     * kolik směna potřebuje.
-     */
+  const dates=[];
 
-    candidates
-      .slice(0,need)
-      .forEach(n=>{
-        shifts[date][n.id]=type;
-      });
+
+  for(
+    let day=1;
+    day<=totalDays;
+    day++
+  ){
+
+    dates.push(
+      dateStr(
+        year,
+        month,
+        day
+      )
+    );
 
   }
 
 
   /*
-   * Nejdříve generujeme každý den.
-   *
-   * PO–PÁ:
-   * 3 DEN + 2 NOC
-   *
-   * SOBOTA:
-   * 3 DEN
-   *
-   * NEDĚLE:
-   * 2 NOC
+   * V první fázi plánujeme omezenější
+   * víkendové dny.
    */
 
-  for(let d=1;d<=len;d++){
+  const ordered=
+    dates.sort(
+      (a,b)=>{
 
-    let date=
-      dateStr(y,m,d);
+        const da=
+          getDayNumber(a);
 
-    let dow=
-      new Date(
-        date+"T12:00:00"
-      ).getDay();
+        const db=
+          getDayNumber(b);
 
 
-    if(dow===6){
+        const weight=
+          d=>{
 
-      /*
-       * SOBOTA
-       */
-      assign(
-        date,
-        "D",
-        settings.dayNeed
-      );
+            if(d===0)
+              return 0;
 
-    }
-    else if(dow===0){
+            if(d===6)
+              return 1;
+
+            return 2;
+
+          };
+
+
+        return weight(da)-weight(db);
+
+      }
+    );
+
+
+  /*
+   * Pro každý den.
+   */
+
+  ordered.forEach(
+    date=>{
+
+      const dow=
+        getDayNumber(date);
+
 
       /*
        * NEDĚLE
+       * pouze NOC
        */
-      assign(
-        date,
-        "N",
-        settings.nightNeed
-      );
 
-    }
-    else{
+      if(dow===0){
+
+        assignShift(
+          date,
+          "N",
+          settings.nightNeed,
+          warnings
+        );
+
+        return;
+
+      }
+
 
       /*
-       * VŠEDNÍ DEN
-       *
-       * Tady je zásadní oprava:
-       * vždy se obsadí OBOJE.
+       * SOBOTA
+       * pouze DEN
        */
 
-      assign(
-        date,
-        "D",
-        settings.dayNeed
-      );
+      if(dow===6){
 
-      assign(
+        assignShift(
+          date,
+          "D",
+          settings.dayNeed,
+          warnings
+        );
+
+        return;
+
+      }
+
+
+      /*
+       * PO–PÁ
+       *
+       * Nejprve NOC.
+       *
+       * Tím se zabrání tomu,
+       * aby denní směna zabrala sestry,
+       * které jsou vhodnější pro noc.
+       */
+
+      assignShift(
         date,
         "N",
-        settings.nightNeed
+        settings.nightNeed,
+        warnings
+      );
+
+
+      assignShift(
+        date,
+        "D",
+        settings.dayNeed,
+        warnings
       );
 
     }
+  );
 
-  }
 
+  /*
+   * Vykreslení.
+   */
 
   renderCalendar();
   renderStats();
 
 
+  /*
+   * Uložení lokálně.
+   */
+
+  cacheLocal();
+
+
   if(warnings.length){
 
     message(
-      `Směny byly vygenerovány, ale
-      některé směny nejsou úplně obsazené.
-      První problém: ${warnings[0]}`,
+      `<b>Směny byly vygenerovány.</b><br>
+       Některé směny se nepodařilo úplně obsadit,
+       protože byla dodržena dovolená a požadavky.<br>
+       <span class="small">
+       ${esc(warnings.slice(0,3).join(" · "))}
+       </span>`,
       "err"
     );
 
   }else{
 
     message(
-      "Směny byly vygenerovány. "
-      +"Ve všední dny se obsazuje denní i noční "
-      +"a směny se rozdělují podle úvazků.",
+      "<b>Směny byly vygenerovány.</b><br>"+
+      "Dovolené a požadavky byly zohledněny.",
       "ok"
     );
 
@@ -1369,72 +2177,85 @@ function generate(){
    KALENDÁŘ
    ========================================================= */
 
-function shiftLabel(s){
-
-  if(s==="D")return "DEN";
-  if(s==="N")return "NOC";
-
-  return "—";
-
-}
-
-
 function renderCalendar(){
 
   if(!monthKey){
 
-    $("calendar").innerHTML="";
+    $("calendar").innerHTML=
+      `<div class="small">
+        Vyber měsíc.
+      </div>`;
 
     return;
+
   }
 
 
-  let [y,m]=
-    monthKey.split("-").map(Number);
+  const [
+    year,
+    month
+  ]=
+    monthKey
+      .split("-")
+      .map(Number);
 
-  let len=
-    daysInMonth(y,m);
+
+  const totalDays=
+    daysInMonth(
+      year,
+      month
+    );
 
 
-  let h=
-    "<table>";
+  let html=
+    `<table class="calendar-table">`;
 
-  h+=
-    "<thead><tr>";
 
-  h+=
-    "<th class='left'>Sestra</th>";
+  /*
+   * HLAVIČKA
+   */
+
+  html+=
+    `<thead><tr>`;
+
+  html+=
+    `<th class="left">
+      Sestra
+    </th>`;
 
 
   for(
     let d=1;
-    d<=len;
+    d<=totalDays;
     d++
   ){
 
-    let ds=
-      dateStr(y,m,d);
+    const date=
+      dateStr(
+        year,
+        month,
+        d
+      );
 
-    let day=
-      [
-        "Ne",
-        "Po",
-        "Út",
-        "St",
-        "Čt",
-        "Pá",
-        "So"
-      ][
-        new Date(
-          ds+"T12:00:00"
-        ).getDay()
-      ];
 
-    h+=`
-      <th>
-        ${d}<br>
+    const dow=
+      getDayNumber(date);
+
+
+    let cls="";
+
+    if(dow===6)
+      cls="sat";
+
+    if(dow===0)
+      cls="sunday";
+
+
+    html+=`
+      <th class="${cls}">
+        <b>${d}</b><br>
         <span class="small">
-          ${day}
+          ${getDayName(date)}
         </span>
       </th>
     `;
@@ -1442,104 +2263,210 @@ function renderCalendar(){
   }
 
 
-  h+=
-    "<th>Celkem</th>";
+  html+=
+    `<th>
+      Celkem
+    </th>`;
 
-  h+=
-    "</tr></thead><tbody>";
-
-
-  nurses.forEach(n=>{
-
-    let hours=0;
-
-    h+=`
-      <tr>
-
-        <td class="left">
-          <b>${esc(n.name)}</b>
-          <br>
-          <span class="small">
-            Úvazek ${n.fraction}
-          </span>
-        </td>
-    `;
+  html+=
+    `</tr></thead><tbody>`;
 
 
-    for(
-      let d=1;
-      d<=len;
-      d++
-    ){
+  /*
+   * ŘÁDKY SESTER
+   */
 
-      let ds=
-        dateStr(y,m,d);
+  nurses.forEach(
+    nurse=>{
 
-      let s=
-        shifts[ds]?.[n.id];
+      let totalHours=0;
 
-      let lv=
-        leaveObj(
-          n.id,
-          ds
+
+      html+=`
+        <tr>
+
+          <td class="left">
+
+            <b>
+              ${esc(nurse.name)}
+            </b>
+
+            <br>
+
+            <span class="small">
+              Úvazek ${nurse.fraction}
+            </span>
+
+          </td>
+      `;
+
+
+      for(
+        let d=1;
+        d<=totalDays;
+        d++
+      ){
+
+        const date=
+          dateStr(
+            year,
+            month,
+            d
+          );
+
+
+        const dow=
+          getDayNumber(date);
+
+
+        let cellClass="";
+
+        if(dow===6)
+          cellClass="sat";
+
+        if(dow===0)
+          cellClass="sunday";
+
+
+        const leave=
+          getLeave(
+            nurse.id,
+            date
+          );
+
+
+        const rr=
+          getRequests(
+            nurse.id,
+            date
+          );
+
+
+        const shift=
+          getShift(
+            date,
+            nurse.id
+          );
+
+
+        let cell="";
+
+
+        /*
+         * DOVOLENÁ
+         *
+         * DOV má přednost jako hlavní
+         * zobrazení.
+         */
+
+        if(leave){
+
+          cell+=`
+            <span
+              class="badge V"
+              title="Dovolená ${leave.from} – ${leave.to}"
+            >
+              DOV
+            </span>
+          `;
+
+        }
+
+
+        /*
+         * POŽADAVKY
+         *
+         * Zobrazujeme je vždy.
+         */
+
+        rr.forEach(
+          request=>{
+
+            cell+=`
+              <span
+                class="badge ${requestClass(request.type)}"
+                title="${esc(
+                  request.note || ""
+                )}"
+              >
+                ${requestLabel(request.type)}
+              </span>
+            `;
+
+          }
         );
 
 
-      if(lv){
+        /*
+         * SKUTEČNÁ SMĚNA
+         */
 
-        h+=`
-          <td>
-            <span class="badge V">
-              DOV
+        if(shift){
+
+          totalHours +=
+            shift==="D"
+            ? settings.dayHours
+            : settings.nightHours;
+
+
+          cell+=`
+            <span
+              class="badge ${shift}"
+            >
+              ${
+                shift==="D"
+                ? "DEN"
+                : "NOC"
+              }
             </span>
+          `;
+
+        }
+
+
+        /*
+         * Když není nic,
+         * zobrazíme tečku.
+         */
+
+        if(!cell){
+
+          cell=
+            `<span class="empty">·</span>`;
+
+        }
+
+
+        html+=`
+          <td class="${cellClass}">
+
+            <div class="cell-stack">
+              ${cell}
+            </div>
+
           </td>
         `;
 
       }
-      else if(s){
-
-        hours +=
-          s==="D"
-          ? settings.dayHours
-          : settings.nightHours;
 
 
-        h+=`
+      html+=`
           <td>
-            <span class="badge ${s}">
-              ${shiftLabel(s)}
-            </span>
+            <b>${totalHours} h</b>
           </td>
-        `;
 
-      }
-      else{
-
-        h+=`
-          <td class="empty">
-            ·
-          </td>
-        `;
-
-      }
+        </tr>
+      `;
 
     }
+  );
 
 
-    h+=`
-        <td>
-          <b>${hours} h</b>
-        </td>
-      </tr>
-    `;
-
-  });
+  html+=
+    `</tbody></table>`;
 
 
-  h+=
-    "</tbody></table>";
-
-  $("calendar").innerHTML=h;
+  $("calendar").innerHTML=html;
 
 }
 
@@ -1548,140 +2475,211 @@ function renderCalendar(){
    STATISTIKY
    ========================================================= */
 
+function countLeaveDays(nurseId){
+
+  let count=0;
+
+
+  leaves
+    .filter(
+      x=>x.nurse_id===nurseId
+    )
+    .forEach(
+      leave=>{
+
+        let current=
+          new Date(
+            leave.from+"T12:00:00"
+          );
+
+        const end=
+          new Date(
+            leave.to+"T12:00:00"
+          );
+
+
+        while(current<=end){
+
+          const date=
+            current
+              .toISOString()
+              .slice(0,10);
+
+
+          if(
+            date.startsWith(
+              monthKey
+            )
+          )
+            count++;
+
+
+          current.setDate(
+            current.getDate()+1
+          );
+
+        }
+
+      }
+    );
+
+
+  return count;
+
+}
+
+
 function renderStats(){
 
   if(!$("statsRows"))
     return;
 
 
-  let totals=
-    nurses.map(n=>{
+  const data=
+    nurses.map(
+      nurse=>{
 
-      let hours=0;
-      let day=0;
-      let night=0;
-      let w=0;
-      let lv=0;
-
-
-      Object.entries(shifts)
-        .forEach(([d,ss])=>{
-
-          let s=ss[n.id];
-
-          if(!s)return;
+        const st=
+          getNurseStats(
+            nurse
+          );
 
 
-          if(s==="D"){
-
-            hours+=settings.dayHours;
-            day++;
-
-          }else{
-
-            hours+=settings.nightHours;
-            night++;
-
-          }
+        const target=
+          monthFund*
+          Number(nurse.fraction||1);
 
 
-          if(weekend(d))
-            w++;
+        return {
 
-        });
+          nurse,
 
+          hours:st.hours,
 
-      /*
-       * Počet dnů dovolené v daném měsíci.
-       */
+          count:st.count,
 
-      leaves
-        .filter(
-          x=>x.nurse_id===n.id
-        )
-        .forEach(x=>{
+          day:st.day,
 
-          let a=
-            new Date(
-              x.from+"T12:00:00"
-            );
+          night:st.night,
 
-          let b=
-            new Date(
-              x.to+"T12:00:00"
-            );
+          weekends:st.weekends,
 
+          leave:
+            countLeaveDays(
+              nurse.id
+            ),
 
-          while(a<=b){
+          target
 
-            if(
-              a.toISOString()
-               .slice(0,7)
-              ===monthKey
-            )
-              lv++;
+        };
+
+      }
+    );
 
 
-            a.setDate(
-              a.getDate()+1
-            );
-
-          }
-
-        });
-
-
-      return {
-        n,
-        hours,
-        day,
-        night,
-        w,
-        lv
-      };
-
-    });
-
-
-  let avg=
-    totals.length
-    ? totals.reduce(
-        (a,x)=>a+x.hours,
+  const average=
+    data.length
+    ? data.reduce(
+        (sum,x)=>
+          sum+x.hours,
         0
-      )/totals.length
+      )/data.length
     : 0;
 
 
   $("statsRows").innerHTML=
-    totals.map(x=>`
+    data.map(
+      x=>`
 
       <tr>
 
         <td class="left">
-          ${esc(x.n.name)}
+          <b>
+            ${esc(x.nurse.name)}
+          </b>
+
+          <br>
+
+          <span class="small">
+            úvazek ${x.nurse.fraction}
+          </span>
         </td>
 
-        <td>${x.hours}</td>
-
         <td>
-          ${x.day+x.night}
+          ${x.hours}
         </td>
 
-        <td>${x.day}</td>
-
-        <td>${x.night}</td>
-
-        <td>${x.w}</td>
-
-        <td>${x.lv}</td>
+        <td>
+          ${x.count}
+        </td>
 
         <td>
-          ${(x.hours-avg).toFixed(1)} h
+          ${x.day}
+        </td>
+
+        <td>
+          ${x.night}
+        </td>
+
+        <td>
+          ${x.weekends}
+        </td>
+
+        <td>
+          ${x.leave}
+        </td>
+
+        <td>
+          ${x.target.toFixed(1)}
+        </td>
+
+        <td>
+          ${(x.hours-x.target).toFixed(1)}
         </td>
 
       </tr>
+    `
+    ).join("");
 
-    `).join("");
+
+  const totalShifts=
+    data.reduce(
+      (sum,x)=>
+        sum+x.count,
+      0
+    );
+
+
+  const totalDay=
+    data.reduce(
+      (sum,x)=>
+        sum+x.day,
+      0
+    );
+
+
+  const totalNight=
+    data.reduce(
+      (sum,x)=>
+        sum+x.night,
+      0
+    );
+
+
+  const totalWeekend=
+    data.reduce(
+      (sum,x)=>
+        sum+x.weekends,
+      0
+    );
+
+
+  const totalHours=
+    data.reduce(
+      (sum,x)=>
+        sum+x.hours,
+      0
+    );
 
 
   $("statsBox").innerHTML=`
@@ -1693,47 +2691,27 @@ function renderStats(){
 
     <div class="stat">
       <span>Směny</span>
-      <b>
-        ${totals.reduce(
-          (a,x)=>a+x.day+x.night,
-          0
-        )}
-      </b>
+      <b>${totalShifts}</b>
     </div>
 
     <div class="stat">
       <span>Denní</span>
-      <b>
-        ${totals.reduce(
-          (a,x)=>a+x.day,
-          0
-        )}
-      </b>
+      <b>${totalDay}</b>
     </div>
 
     <div class="stat">
       <span>Noční</span>
-      <b>
-        ${totals.reduce(
-          (a,x)=>a+x.night,
-          0
-        )}
-      </b>
+      <b>${totalNight}</b>
     </div>
 
     <div class="stat">
       <span>Víkendové</span>
-      <b>
-        ${totals.reduce(
-          (a,x)=>a+x.w,
-          0
-        )}
-      </b>
+      <b>${totalWeekend}</b>
     </div>
 
     <div class="stat">
-      <span>Průměr hodin</span>
-      <b>${avg.toFixed(1)}</b>
+      <span>Celkem hodin</span>
+      <b>${totalHours}</b>
     </div>
 
   `;
@@ -1742,14 +2720,14 @@ function renderStats(){
 
 
 /* =========================================================
-   SMAZÁNÍ SMĚN
+   VYMAZÁNÍ SMĚN
    ========================================================= */
 
 function clearMonth(){
 
   if(
     !confirm(
-      "Vymazat směny tohoto měsíce?"
+      "Opravdu vymazat všechny směny?"
     )
   )
     return;
@@ -1760,6 +2738,13 @@ function clearMonth(){
   renderCalendar();
   renderStats();
 
+  cacheLocal();
+
+  message(
+    "Směny byly vymazány.",
+    "ok"
+  );
+
 }
 
 
@@ -1769,18 +2754,37 @@ function clearMonth(){
 
 function cacheLocal(){
 
-  localStorage.setItem(
-    "dialysisPlanner",
-    JSON.stringify({
-      nurses,
-      leaves,
-      requests,
-      shifts,
-      settings,
-      monthKey,
-      monthFund
-    })
-  );
+  try{
+
+    localStorage.setItem(
+      "dialysisPlanner",
+      JSON.stringify({
+
+        nurses,
+
+        leaves,
+
+        requests,
+
+        shifts,
+
+        settings,
+
+        monthKey,
+
+        monthFund
+
+      })
+    );
+
+  }catch(e){
+
+    console.warn(
+      "Local cache error",
+      e
+    );
+
+  }
 
 }
 
@@ -1789,14 +2793,22 @@ function cacheLocal(){
    SUPABASE CHYBY
    ========================================================= */
 
-function checkDb(res,label){
+function checkDb(
+  result,
+  label
+){
 
-  if(res.error)
+  if(result.error){
+
     throw new Error(
-      label+": "+res.error.message
+      label+
+      ": "+
+      result.error.message
     );
 
-  return res.data;
+  }
+
+  return result.data;
 
 }
 
@@ -1813,9 +2825,8 @@ async function saveAll(){
   if(!sb){
 
     message(
-      "Uloženo lokálně. "
-      +"Supabase není připojeno.",
-      "ok"
+      "Supabase není připojeno. Data byla uložena pouze lokálně.",
+      "err"
     );
 
     return;
@@ -1826,86 +2837,46 @@ async function saveAll(){
   try{
 
     /*
-     * SESTRY
+     * SEStry
      */
 
-    let r=
+    let result=
       await sb
         .from("nurses")
         .upsert(
-          nurses.map(n=>({
-            id:n.id,
-            name:n.name,
-            fraction:n.fraction,
-            active:true
-          })),
-          {onConflict:"id"}
+
+          nurses.map(
+            nurse=>({
+
+              id:nurse.id,
+
+              name:nurse.name,
+
+              fraction:nurse.fraction,
+
+              active:true
+
+            })
+          ),
+
+          {
+            onConflict:"id"
+          }
+
         );
 
 
     checkDb(
-      r,
-      "Sestry"
+      result,
+      "Uložení sester"
     );
-
-
-    /*
-     * Smazané sestry označíme jako neaktivní.
-     */
-
-    let dbN=
-      await sb
-        .from("nurses")
-        .select("id");
-
-
-    checkDb(
-      dbN,
-      "Načtení sester"
-    );
-
-
-    let keep=
-      new Set(
-        nurses.map(n=>n.id)
-      );
-
-
-    let removed=
-      (dbN.data||[])
-        .map(x=>x.id)
-        .filter(
-          id=>!keep.has(id)
-        );
-
-
-    if(removed.length){
-
-      let rr=
-        await sb
-          .from("nurses")
-          .update({
-            active:false
-          })
-          .in(
-            "id",
-            removed
-          );
-
-
-      checkDb(
-        rr,
-        "Deaktivace sester"
-      );
-
-    }
 
 
     /*
      * DOVOLENÉ
      */
 
-    let dl=
+    result=
       await sb
         .from("leaves")
         .delete()
@@ -1916,31 +2887,40 @@ async function saveAll(){
 
 
     checkDb(
-      dl,
+      result,
       "Mazání dovolených"
     );
 
 
     if(leaves.length){
 
-      let il=
+      result=
         await sb
           .from("leaves")
           .insert(
-            leaves.map(x=>({
 
-              id:x.id,
-              nurse_id:x.nurse_id,
-              date_from:x.from,
-              date_to:x.to,
-              count_in_fund:x.count_fund
+            leaves.map(
+              x=>({
 
-            }))
+                id:x.id,
+
+                nurse_id:x.nurse_id,
+
+                date_from:x.from,
+
+                date_to:x.to,
+
+                count_in_fund:
+                  x.count_fund
+
+              })
+            )
+
           );
 
 
       checkDb(
-        il,
+        result,
         "Uložení dovolených"
       );
 
@@ -1951,7 +2931,7 @@ async function saveAll(){
      * POŽADAVKY
      */
 
-    let dr=
+    result=
       await sb
         .from("shift_requests")
         .delete()
@@ -1962,31 +2942,39 @@ async function saveAll(){
 
 
     checkDb(
-      dr,
+      result,
       "Mazání požadavků"
     );
 
 
     if(requests.length){
 
-      let ir=
+      result=
         await sb
           .from("shift_requests")
           .insert(
-            requests.map(x=>({
 
-              id:x.id,
-              nurse_id:x.nurse_id,
-              date:x.date,
-              type:x.type,
-              note:x.note
+            requests.map(
+              x=>({
 
-            }))
+                id:x.id,
+
+                nurse_id:x.nurse_id,
+
+                date:x.date,
+
+                type:x.type,
+
+                note:x.note
+
+              })
+            )
+
           );
 
 
       checkDb(
-        ir,
+        result,
         "Uložení požadavků"
       );
 
@@ -1997,7 +2985,7 @@ async function saveAll(){
      * SMĚNY
      */
 
-    let ds=
+    result=
       await sb
         .from("shifts")
         .delete()
@@ -2008,12 +2996,12 @@ async function saveAll(){
 
 
     checkDb(
-      ds,
+      result,
       "Mazání směn"
     );
 
 
-    let arr=[];
+    const shiftRows=[];
 
 
     Object.entries(shifts)
@@ -2022,12 +3010,16 @@ async function saveAll(){
 
           Object.entries(ss)
             .forEach(
-              ([nid,type])=>{
+              ([nurseId,type])=>{
 
-                arr.push({
+                shiftRows.push({
+
                   date,
-                  nurse_id:nid,
+
+                  nurse_id:nurseId,
+
                   shift_type:type
+
                 });
 
               }
@@ -2037,16 +3029,18 @@ async function saveAll(){
       );
 
 
-    if(arr.length){
+    if(shiftRows.length){
 
-      let is=
+      result=
         await sb
           .from("shifts")
-          .insert(arr);
+          .insert(
+            shiftRows
+          );
 
 
       checkDb(
-        is,
+        result,
         "Uložení směn"
       );
 
@@ -2057,22 +3051,26 @@ async function saveAll(){
      * MĚSÍC
      */
 
-    let im=
+    result=
       await sb
         .from("months")
         .upsert(
+
           {
             month:monthKey,
+
             fund_hours:monthFund
           },
+
           {
             onConflict:"month"
           }
+
         );
 
 
     checkDb(
-      im,
+      result,
       "Uložení měsíce"
     );
 
@@ -2081,7 +3079,7 @@ async function saveAll(){
      * OVĚŘENÍ
      */
 
-    let verify=
+    result=
       await sb
         .from("nurses")
         .select(
@@ -2091,40 +3089,55 @@ async function saveAll(){
           "active",
           true
         )
-        .order("name");
+        .order(
+          "name"
+        );
 
 
     checkDb(
-      verify,
-      "Ověření uložení"
+      result,
+      "Ověření"
     );
 
 
     if(
-      (verify.data||[]).length===0
-    )
+      !result ||
+      !result.length
+    ){
+
       throw new Error(
-        "Supabase nevrátil žádnou aktivní sestru po uložení."
+        "Supabase nevrátil žádné aktivní sestry."
       );
+
+    }
 
 
     message(
       `Uloženo do Supabase.
-       Aktivních sester:
-       ${verify.data.length}.`,
+       Aktivních sester: ${result.length}.`,
       "ok"
     );
 
-
   }
-  catch(e){
+  catch(error){
 
-    console.error(e);
+    console.error(
+      "Supabase save error:",
+      error
+    );
+
 
     message(
-      "Uložení do Supabase selhalo: "
-      +esc(e.message||e)
-      +". Lokální záloha byla uložena.",
+      "Uložení do Supabase selhalo:<br>"+
+      "<b>"+
+      esc(
+        error.message ||
+        String(error)
+      )+
+      "</b><br>"+
+      "<span class='small'>"+
+      "Lokální záloha byla zachována."
+      +"</span>",
       "err"
     );
 
@@ -2134,7 +3147,7 @@ async function saveAll(){
 
 
 /* =========================================================
-   NAČTENÍ SUPABASE
+   NAČTENÍ ZE SUPABASE
    ========================================================= */
 
 async function loadSupabase(){
@@ -2146,10 +3159,10 @@ async function loadSupabase(){
   try{
 
     /*
-     * SESTRY
+     * SEStry
      */
 
-    let a=
+    let result=
       await sb
         .from("nurses")
         .select("*")
@@ -2157,47 +3170,33 @@ async function loadSupabase(){
           "active",
           true
         )
-        .order("name");
-
-
-    checkDb(
-      a,
-      "Načtení sester"
-    );
-
-
-    if(a.data?.length){
-
-      nurses=
-        a.data.map(x=>({
-
-          id:x.id,
-          name:x.name,
-          fraction:+x.fraction
-
-        }));
-
-    }
-    else if(nurses.length===0){
-
-      nurses=
-        Array.from(
-          {length:9},
-          (_,i)=>({
-
-            id:uid(),
-            name:`Sestra ${i+1}`,
-            fraction:1
-
-          })
+        .order(
+          "name"
         );
 
 
-      message(
-        "V Supabase nejsou žádné aktivní sestry. "
-        +"Vytvořeno 9 výchozích sester – klikni Uložit.",
-        "err"
+    const nurseData=
+      checkDb(
+        result,
+        "Načtení sester"
       );
+
+
+    if(nurseData?.length){
+
+      nurses=
+        nurseData.map(
+          x=>({
+
+            id:x.id,
+
+            name:x.name,
+
+            fraction:
+              Number(x.fraction)||1
+
+          })
+        );
 
     }
 
@@ -2206,105 +3205,119 @@ async function loadSupabase(){
      * DOVOLENÉ
      */
 
-    let l=
+    result=
       await sb
         .from("leaves")
         .select("*");
 
 
-    checkDb(
-      l,
-      "Načtení dovolených"
-    );
+    const leaveData=
+      checkDb(
+        result,
+        "Načtení dovolených"
+      );
 
 
-    if(l.data){
-
-      leaves=
-        l.data.map(x=>({
+    leaves=
+      (leaveData||[]).map(
+        x=>({
 
           id:x.id,
+
           nurse_id:x.nurse_id,
+
           from:x.date_from,
+
           to:x.date_to,
-          count_fund:x.count_in_fund
 
-        }));
+          count_fund:
+            x.count_in_fund
 
-    }
+        })
+      );
 
 
     /*
      * POŽADAVKY
      */
 
-    let r=
+    result=
       await sb
         .from("shift_requests")
         .select("*");
 
 
-    checkDb(
-      r,
-      "Načtení požadavků"
-    );
+    const reqData=
+      checkDb(
+        result,
+        "Načtení požadavků"
+      );
 
 
-    if(r.data){
-
-      requests=
-        r.data.map(x=>({
+    requests=
+      (reqData||[]).map(
+        x=>({
 
           id:x.id,
+
           nurse_id:x.nurse_id,
+
           date:x.date,
+
           type:x.type,
+
           note:x.note
 
-        }));
-
-    }
+        })
+      );
 
 
     /*
      * SMĚNY
      */
 
-    let s=
+    result=
       await sb
         .from("shifts")
         .select("*");
 
 
-    checkDb(
-      s,
-      "Načtení směn"
-    );
+    const shiftData=
+      checkDb(
+        result,
+        "Načtení směn"
+      );
 
 
     shifts={};
 
 
-    (s.data||[])
+    (shiftData||[])
       .filter(
-        x=>x.date.startsWith(monthKey)
+        x=>
+          !monthKey ||
+          x.date.startsWith(
+            monthKey
+          )
       )
-      .forEach(x=>{
+      .forEach(
+        x=>{
 
-        if(!shifts[x.date])
-          shifts[x.date]={};
+          if(!shifts[x.date])
+            shifts[x.date]={};
 
-        shifts[x.date][x.nurse_id]
-          =x.shift_type;
+          shifts[x.date][x.nurse_id]=
+            x.shift_type;
 
-      });
+        }
+      );
 
 
     /*
      * MĚSÍC
      */
 
-    let mo=
+    result=
       await sb
         .from("months")
         .select("*")
@@ -2315,16 +3328,19 @@ async function loadSupabase(){
         .maybeSingle();
 
 
-    checkDb(
-      mo,
-      "Načtení měsíce"
-    );
+    const monthData=
+      checkDb(
+        result,
+        "Načtení měsíce"
+      );
 
 
-    if(mo.data){
+    if(monthData){
 
       monthFund=
-        +mo.data.fund_hours;
+        Number(
+          monthData.fund_hours
+        ) || 168;
 
       $("fund").value=
         monthFund;
@@ -2339,15 +3355,24 @@ async function loadSupabase(){
     renderCalendar();
     renderStats();
 
-  }
-  catch(e){
 
-    console.error(e);
+  }
+  catch(error){
+
+    console.error(
+      "Supabase load error:",
+      error
+    );
+
 
     message(
-      "Supabase se nepodařilo načíst: "
-      +esc(e.message||e)
-      +". Zkontroluj Data API/RLS.",
+      "Supabase se nepodařilo načíst:<br>"+
+      "<b>"+
+      esc(
+        error.message ||
+        String(error)
+      )+
+      "</b>",
       "err"
     );
 
@@ -2357,66 +3382,71 @@ async function loadSupabase(){
 
 
 /* =========================================================
-   MÍSTNÍ DATA
+   START
    ========================================================= */
 
-let local=
-  localStorage.getItem(
-    "dialysisPlanner"
-  );
+function init(){
+
+  const now=
+    new Date();
 
 
-if(local){
+  $("month").value=
+    now.getFullYear()+
+    "-"+
+    String(
+      now.getMonth()+1
+    ).padStart(2,"0");
 
-  try{
 
-    let x=
-      JSON.parse(local);
+  /*
+   * Výchozích 9 sester použijeme
+   * pouze pokud není nic načteno.
+   */
+
+  if(!nurses.length){
 
     nurses=
-      x.nurses || nurses;
+      Array.from(
+        {length:9},
+        (_,i)=>({
 
-    leaves=
-      x.leaves || [];
+          id:uid(),
 
-    requests=
-      x.requests || [];
+          name:
+            "Sestra "+(i+1),
 
-    shifts=
-      x.shifts || {};
+          fraction:1
 
-    settings=
-      x.settings || settings;
+        })
+      );
 
   }
-  catch(e){}
+
+
+  $("dayHours").value=
+    settings.dayHours;
+
+  $("nightHours").value=
+    settings.nightHours;
+
+  $("halfNightHours").value=
+    settings.halfNightHours;
+
+  $("dayNeed").value=
+    settings.dayNeed;
+
+  $("nightNeed").value=
+    settings.nightNeed;
+
+
+  renderNurses();
+  renderReq();
+  renderCalendar();
+  renderStats();
 
 }
 
-
-/* =========================================================
-   NASTAVENÍ
-   ========================================================= */
-
-$("dayHours").value=
-  settings.dayHours;
-
-$("nightHours").value=
-  settings.nightHours;
-
-$("halfNightHours").value=
-  settings.halfNightHours;
-
-$("dayNeed").value=
-  settings.dayNeed;
-
-$("nightNeed").value=
-  settings.nightNeed;
-
-
-/* =========================================================
-   START
-   ========================================================= */
 
 init();
 
