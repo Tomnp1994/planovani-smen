@@ -884,6 +884,8 @@ th{
     <li>Sobota je vždy jen DEN, neděle je vždy jen NOC.</li>
     <li>Směny se rozdělují podle úvazků, co nejspravedlivěji.</li>
     <li>Víkendové, denní i noční směny se snažíme rozdělit rovnoměrně mezi sestry.</li>
+    <li>Pokud je měsíc personálně napjatý a vznikne přesčas, generátor se ho snaží
+      po vygenerování ještě přerozdělit tak, aby ho nenesla jen jedna nebo dvě sestry.</li>
     <li>Měsíce na sebe navazují – poslední dny předchozího měsíce se počítají do kontroly (odpočinek, max. směn v řadě).</li>
   </ul>
 
@@ -1990,7 +1992,7 @@ function scheduleFairnessScore(targets){
   return score;
 }
 
-function optimizeSchedule(targets, passes=12){
+function optimizeSchedule(targets, passes=20){
   let improved=true;
   let pass=0;
   while(improved && pass<passes){
@@ -2031,6 +2033,86 @@ function optimizeSchedule(targets, passes=12){
         }
       }
     }
+  }
+}
+
+
+/* =========================================================
+   PŘEROZDĚLENÍ PŘESČASŮ
+   ========================================================= */
+
+// optimizeSchedule() výše hledá lokální záměny, které zlepší celkové skóre,
+// ale s napjatým měsícem (víc potřebných směn, než kolik je fondu) se snadno
+// zasekne v řešení, kde pár sester nese většinu přesčasu a jiné mají 0.
+//
+// Důležité: když je celé oddělení v přesčase (personálně napjatý měsíc),
+// NEEXISTUJE žádná sestra "pod cílem" - přerozdělovat se tedy musí i mezi
+// dvěma sestrami, které jsou OBĚ nad cílem (jen jedna víc než druhá).
+// Funkce proto vždy porovnává jen nejvíc a nejméně zatíženou sestru, bez
+// ohledu na to, jestli je jejich odchylka kladná nebo záporná, a zkouší
+// mezi nimi přesunout jednu směnu. Tvrdá pravidla se ověřují přes stejný
+// validateSchedule(), jaký používá zbytek generátoru, takže se nikdy
+// nevytvoří neplatný plán.
+function rebalanceOvertime(targets, maxIterations=400){
+
+  function nurseTarget(nurse){
+    const t=targets.find(x=>sameNurse(x.nurse.id,nurse.id));
+    return t ? t.hours : monthFund*(Number(nurse.fraction)||1);
+  }
+
+  const MIN_GAP_HOURS = 1; // pod tuhle mez už vyrovnávání nemá smysl
+
+  for(let iteration=0; iteration<maxIterations; iteration++){
+
+    const stats = nurses.map(nurse=>({
+      nurse,
+      deviation: getNurseStats(nurse).hours - nurseTarget(nurse)
+    }));
+
+    const mostLoaded  = [...stats].sort((a,b)=>b.deviation-a.deviation);
+    const leastLoaded = [...stats].sort((a,b)=>a.deviation-b.deviation);
+
+    if(mostLoaded[0].deviation - leastLoaded[0].deviation < MIN_GAP_HOURS) break;
+
+    let moved=false;
+
+    outer:
+    for(const over of mostLoaded){
+
+      const dates = Object.keys(shifts)
+        .filter(d=>isCurrentMonthDate(d) && shifts[d]?.[over.nurse.id])
+        .sort();
+
+      for(const under of leastLoaded){
+        if(sameNurse(under.nurse.id, over.nurse.id)) continue;
+        if(over.deviation - under.deviation < MIN_GAP_HOURS) continue; // tahle dvojice by nic nezlepšila
+
+        for(const date of dates){
+          const type = shifts[date][over.nurse.id];
+          if(shifts[date]?.[under.nurse.id]) continue; // recipient už má tento den směnu
+
+          const candidate = cloneShifts();
+          delete candidate[date][over.nurse.id];
+          if(!candidate[date]) candidate[date]={};
+          candidate[date][under.nurse.id]=type;
+
+          // Ověříme přes plnou validaci (i s návazností na ostatní měsíce),
+          // ať se předání nikdy neprovede, pokud by porušilo tvrdé pravidlo.
+          const backup=shifts;
+          shifts={...shifts, ...candidate};
+          const errors=validateSchedule();
+          shifts=backup;
+
+          if(!errors.length){
+            Object.assign(shifts, candidate);
+            moved=true;
+            break outer;
+          }
+        }
+      }
+    }
+
+    if(!moved) break; // žádný další bezpečný přesun už neexistuje
   }
 }
 
@@ -2101,6 +2183,7 @@ function generate(randomize=false){
 
   shifts=best;
   optimizeSchedule(targets);
+  rebalanceOvertime(targets);
   renderCalendar();
   renderStats();
   cacheLocal();
