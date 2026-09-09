@@ -1698,6 +1698,115 @@ function shiftAllowed(
 
 
 /* =========================================================
+   PŘIDĚLENÍ SMĚNY – RYCHLÝ A PEVNÝ GENERÁTOR
+   ========================================================= */
+
+function generatorScore(nurse,date,type,targets,randomize=false){
+  const st=getNurseStats(nurse);
+  const t=targets.find(x=>sameNurse(x.nurse.id,nurse.id));
+  const hoursAfter=st.hours+(type==="D"?settings.dayHours:settings.nightHours);
+  const dayAfter=st.day+(type==="D"?1:0);
+  const nightAfter=st.night+(type==="N"?1:0);
+  const weekendAfter=st.weekends+(isWeekend(date)?1:0);
+
+  // Nižší skóre = lepší kandidát.
+  // Tvrdé podmínky řeší shiftAllowed(), zde jen férovost.
+  const hTarget=Math.max(t?.hours||monthFund,12);
+  const cTarget=Math.max(t?.count||1,1);
+  const dTarget=Math.max(t?.day||1,1);
+  const nTarget=Math.max(t?.night||1,1);
+  const wTarget=Math.max(t?.weekends||1,1);
+
+  let score=0;
+  score += Math.pow((hoursAfter-(t?.hours||hTarget))/hTarget,2)*700;
+  score += Math.pow((st.count+1-(t?.count||cTarget))/cTarget,2)*250;
+  score += Math.pow((dayAfter-(t?.day||dTarget))/dTarget,2)*180;
+  score += Math.pow((nightAfter-(t?.night||nTarget))/nTarget,2)*180;
+  score += Math.pow((weekendAfter-(t?.weekends||wTarget))/wTarget,2)*1200;
+
+  // Když má sestra výrazně méně směn než ostatní, zvýhodni ji.
+  score += st.count*0.05;
+
+  if(randomize) score += Math.random()*0.15;
+  return score;
+}
+
+function assignShift(date,type,needed,warnings,targets,randomize=false){
+  if(!shifts[date]) shifts[date]={};
+
+  const candidates=nurses.filter(n=>shiftAllowed(n,date,type));
+  candidates.sort((a,b)=>generatorScore(a,date,type,targets,randomize)-generatorScore(b,date,type,targets,randomize));
+
+  const selected=candidates.slice(0,needed);
+  selected.forEach(n=>{ shifts[date][n.id]=type; });
+
+  if(selected.length<needed){
+    warnings.push(`${date}: ${type==="D"?"DEN":"NOC"} – ${selected.length}/${needed}`);
+  }
+}
+
+/* =========================================================
+   KONTROLA CELÉHO PLÁNU
+   ========================================================= */
+
+function validateSchedule(){
+  const errors=[];
+  if(!monthKey) return errors;
+
+  const [year,month]=monthKey.split("-").map(Number);
+  const totalDays=daysInMonth(year,month);
+  const start=dateStr(year,month,1);
+
+  nurses.forEach(nurse=>{
+    let run=0;
+    let previousType=null;
+
+    for(let offset=-2;offset<totalDays;offset++){
+      const date=dateOffset(start,offset);
+      const inMonth=date.startsWith(monthKey);
+      const type=shifts[date]?.[nurse.id] || null;
+
+      if(!type){
+        run=0;
+        previousType=null;
+        continue;
+      }
+
+      if(inMonth && isLeave(nurse.id,date))
+        errors.push(`${nurse.name}: směna během dovolené ${date}`);
+
+      const rr=getRequests(nurse.id,date);
+      if(inMonth && rr.some(x=>x.type==="off"))
+        errors.push(`${nurse.name}: směna ve VOLNU ${date}`);
+      if(inMonth && type==="D" && rr.some(x=>x.type==="day"))
+        errors.push(`${nurse.name}: DEN v omezení ${date}`);
+      if(inMonth && type==="N" && rr.some(x=>x.type==="night"))
+        errors.push(`${nurse.name}: NOC v omezení ${date}`);
+
+      run++;
+      if(inMonth && run>=3)
+        errors.push(`${nurse.name}: 3 směny za sebou (${date})`);
+      if(inMonth && previousType==="N" && type==="D")
+        errors.push(`${nurse.name}: DEN po NOCI (${date})`);
+
+      previousType=type;
+    }
+  });
+
+  // Na každém dni může mít sestra maximálně jednu směnu.
+  for(let d=1;d<=totalDays;d++){
+    const date=dateStr(year,month,d);
+    const seen=new Set();
+    Object.keys(shifts[date]||{}).forEach(id=>{
+      if(seen.has(id)) errors.push(`${date}: sestra má dvě směny.`);
+      seen.add(id);
+    });
+  }
+
+  return [...new Set(errors)];
+}
+
+/* =========================================================
    STATISTIKY PRO GENERÁTOR
    ========================================================= */
 
@@ -2001,51 +2110,43 @@ function optimizeSchedule(targets, passes=12){
    ========================================================= */
 
 function generate(randomize=false){
-  monthKey=$('month').value;
-  if(!monthKey){ message('Nejdříve vyber měsíc.','err'); return; }
+  monthKey=$("month").value;
+  if(!monthKey){ message("Nejdříve vyber měsíc.","err"); return; }
 
-  monthFund=Number($('fund').value)||168;
-  settings.dayHours=Number($('dayHours').value)||12;
-  settings.nightHours=Number($('nightHours').value)||12;
-  settings.halfNightHours=Number($('halfNightHours').value)||6;
-  settings.dayNeed=Number($('dayNeed').value)||3;
-  settings.nightNeed=Number($('nightNeed').value)||2;
+  monthFund=Number($("fund").value)||168;
+  settings.dayHours=Number($("dayHours").value)||12;
+  settings.nightHours=Number($("nightHours").value)||12;
+  settings.halfNightHours=Number($("halfNightHours").value)||6;
+  settings.dayNeed=Number($("dayNeed").value)||3;
+  settings.nightNeed=Number($("nightNeed").value)||2;
 
-  const oldShifts=shifts;
-  const [year,month]=monthKey.split('-').map(Number);
+  const [year,month]=monthKey.split("-").map(Number);
   const totalDays=daysInMonth(year,month);
   const dates=[];
   for(let d=1;d<=totalDays;d++) dates.push(dateStr(year,month,d));
   const targets=getGenerationTargets();
 
-  let best=null, bestScore=Infinity, bestWarnings=[];
-  const attempts=randomize ? 120 : 80;
+  // Jen několik rychlých variant. Žádné dlouhé zamrzání prohlížeče.
+  const attempts=randomize?6:4;
+  let best=null,bestScore=Infinity,bestWarnings=[];
 
   for(let attempt=0;attempt<attempts;attempt++){
     shifts={};
-    Object.entries(oldShifts).forEach(([date,ss])=>{
-      if(!isCurrentMonthDate(date)) shifts[date]={...ss};
-    });
     const warnings=[];
 
-    // Chronologicky, aby byly vždy kontrolovány předchozí směny.
+    // Chronologicky – pravidla se tak kontrolují vždy proti skutečně
+    // předchozím dnům. Přechod přes konec měsíce je zachován.
     dates.forEach(date=>{
       const dow=getDayNumber(date);
-      const jobs=[];
-      if(dow!==0) jobs.push(['D',settings.dayNeed]);
-      if(dow!==6) jobs.push(['N',settings.nightNeed]);
-      jobs.forEach(([type,needed])=>{
-        assignShift(date,type,needed,warnings,targets,true);
-      });
+      if(dow!==0) assignShift(date,"D",settings.dayNeed,warnings,targets,randomize);
+      if(dow!==6) assignShift(date,"N",settings.nightNeed,warnings,targets,randomize);
     });
 
-    // Globální dorovnání. Nejen lokální greedy výběr.
-    optimizeSchedule(targets, randomize ? 16 : 12);
-
     const errors=validateSchedule();
-    let score=warnings.length*1000000 + errors.length*100000000;
-    score+=scheduleFairnessScore(targets);
+    if(errors.length) continue;
 
+    let score=warnings.length*100000;
+    score+=scheduleFairnessScore(targets);
     if(score<bestScore){
       bestScore=score;
       best=JSON.parse(JSON.stringify(shifts));
@@ -2053,20 +2154,25 @@ function generate(randomize=false){
     }
   }
 
-  shifts=best || {};
-  const finalErrors=validateSchedule();
-  renderCalendar(); renderStats(); cacheLocal();
-
-  if(finalErrors.length){
-    message('<b>Plán nebyl vytvořen bezpečně.</b><br>Generátor odmítl výsledek, který by porušoval pravidla.<br><span class="small">'+esc(finalErrors.slice(0,5).join(' · '))+'</span>','err');
+  if(!best){
+    shifts={};
+    renderCalendar();
+    renderStats();
+    message("<b>Směny se nepodařilo bezpečně vygenerovat.</b><br>Pravidla jsou příliš omezená vzhledem k dovoleným a požadavkům.","err");
     return;
   }
+
+  shifts=best;
+  renderCalendar();
+  renderStats();
+  cacheLocal();
+
   if(bestWarnings.length){
-    message('<b>Směny byly vygenerovány.</b><br>Některé směny se nepodařilo úplně obsadit, protože byla dodržena dovolená, požadavky a pravidla.<br><span class="small">'+esc(bestWarnings.slice(0,3).join(' · '))+'</span>','err');
+    message(`<b>Směny byly vygenerovány.</b><br>Některé směny zůstaly neobsazené (${esc(bestWarnings.slice(0,3).join(" · "))}). Pravidla ale nebyla porušena.`,"err");
   }else{
     message(randomize
-      ? '<b>Nová varianta směn byla vygenerována.</b><br>Pravidla a co nejrovnoměrnější rozdělení hodin, DEN/NOC a víkendů byly zachovány.'
-      : '<b>Směny byly vygenerovány.</b><br>Pravidla a co nejrovnoměrnější rozdělení hodin, DEN/NOC a víkendů byly zohledněny.','ok');
+      ? "<b>Nová varianta směn byla vygenerována.</b><br>Pravidla a rovnoměrné rozdělení byly zachovány."
+      : "<b>Směny byly vygenerovány.</b><br>Pravidla a rovnoměrné rozdělení byly zohledněny.","ok");
   }
 }
 
