@@ -169,12 +169,6 @@ th{
   color:#5b21b6
 }
 
-.N2{
-  background:#f3e8ff;
-  color:#7e22ce;
-  border:1px dashed #c084fc
-}
-
 .V{
   background:#dcfce7;
   color:#166534
@@ -315,22 +309,6 @@ th{
   cursor:grabbing;
 }
 
-.half-toggle{
-  border:none;
-  background:rgba(255,255,255,.55);
-  color:inherit;
-  border-radius:50%;
-  width:14px;
-  height:14px;
-  line-height:12px;
-  font-size:9px;
-  font-weight:800;
-  padding:0;
-  margin-left:4px;
-  cursor:pointer;
-  vertical-align:middle;
-}
-
 .calendar-cell-editable.drop-target{
   box-shadow:inset 0 0 0 2px #0f718a;
   background:#eefbff;
@@ -384,10 +362,6 @@ th{
   .calendar-table th:first-child,
   .calendar-table td:first-child{
     position:static
-  }
-
-  .half-toggle{
-    display:none
   }
 }
 </style>
@@ -507,8 +481,6 @@ th{
 
     <span class="badge N">NOC</span>
 
-    <span class="badge N2">NOC do 24h</span>
-
     <span class="badge V">DOV</span>
 
     <span class="badge X">VOLNO</span>
@@ -523,7 +495,6 @@ th{
     Požadavky a dovolené zůstávají v kalendáři viditelné
     i po vygenerování směn. Směnu můžeš <b>přetáhnout myší</b> na jiné políčko,
     případně na směnu kliknout a potom kliknout na cílové políčko.
-    U noční směny přepneš tlačítkem <b>½</b> na "pouze do půlnoci".
     Po každé změně se okamžitě přepočítají statistiky a kontrolují pravidla.
   </div>
 
@@ -815,17 +786,6 @@ th{
     </div>
 
     <div>
-      <label>Noční „jen do půlnoci“ – hodiny</label>
-
-      <input
-        id="halfNightHours"
-        type="number"
-        value="6"
-        onchange="applySettingsPreview()"
-      >
-    </div>
-
-    <div>
       <label>Dovolená – kredit hodin/den do fondu</label>
 
       <input
@@ -864,7 +824,8 @@ th{
   <p class="small" id="settingsSummary"></p>
   <p class="small">
     Pravidlo je vždy pevné: sobota jen DEN, neděle jen NOC, po noční směně
-    nikdy nenásleduje denní, nejvýše 2 směny v řadě.
+    nikdy nenásleduje denní. Tři směny v řadě jsou povolené jen jako
+    DEN-DEN-NOC nebo DEN-NOC-NOC, čtyři a víc v řadě nejsou nikdy povolené.
   </p>
 
 </div>
@@ -875,13 +836,15 @@ th{
   <h2>Pravidla generátoru</h2>
 
   <ul>
-    <li>Nejvýše 2 směny za sebou (3. za sebou je vždy zakázaná).</li>
-    <li>Po noční (i „do půlnoci“) nesmí následující den na denní.</li>
+    <li>Tři směny v řadě jsou povolené jen v pořadí DEN-DEN-NOC nebo DEN-NOC-NOC, čtyři a víc směn v řadě nejsou nikdy povolené.</li>
+    <li>Po noční nesmí následující den na denní.</li>
     <li>Dovolená blokuje směnu a počítá se do fondu hodin.</li>
     <li>Požadavek „nemůže pracovat“ blokuje směnu.</li>
     <li>„Nemůže DEN“ blokuje pouze DEN, „Nemůže NOC“ blokuje pouze NOC.</li>
     <li>Preference ovlivňuje výběr, ale není povinná.</li>
     <li>Sobota je vždy jen DEN, neděle je vždy jen NOC.</li>
+    <li>Před nástupem na dovolenou nesmí být noční směna.</li>
+    <li>Po návratu z dovolené se generátor snaží hned první den zajistit směnu.</li>
     <li>Směny se rozdělují podle úvazků, co nejspravedlivěji.</li>
     <li>Víkendové, denní i noční směny se snažíme rozdělit rovnoměrně mezi sestry.</li>
     <li>Pokud je měsíc personálně napjatý a vznikne přesčas, generátor se ho snaží
@@ -927,7 +890,7 @@ let nurses = [];
 let leaves = [];
 let requests = [];
 
-// shifts holds EVERY loaded month at once ({date: {nurseId: "D"|"N"|"Nh"}}).
+// shifts holds EVERY loaded month at once ({date: {nurseId: "D"|"N"}}).
 // This is required so that the last days of the previous month remain
 // available when generating/validating the current month (continuity rule).
 let shifts = {};
@@ -938,7 +901,6 @@ let monthFund = 168;
 let settings = {
   dayHours:12,
   nightHours:12,
-  halfNightHours:6,
   leaveHoursPerDay:7.5,
   dayNeed:3,
   nightNeed:2
@@ -1047,25 +1009,21 @@ function sameNurse(a,b){
   return String(a ?? "").trim() === String(b ?? "").trim();
 }
 
-// A shift cell can hold "D" (day), "N" (full night) or "Nh" (night, only
-// until midnight). These two small helpers are used everywhere instead of
-// comparing strings directly, so the "half night" idea only has to be
-// understood in one place.
+// A shift cell can hold "D" (day) or "N" (night). These two small helpers
+// are used everywhere instead of comparing strings directly.
 function isNightType(type){
-  return type==="N" || type==="Nh";
+  return type==="N";
 }
 function isDayType(type){
   return type==="D";
 }
 function hoursForType(type){
   if(type==="D") return settings.dayHours;
-  if(type==="Nh") return settings.halfNightHours;
   if(type==="N") return settings.nightHours;
   return 0;
 }
 function shiftLabel(type){
   if(type==="D") return "DEN";
-  if(type==="Nh") return "NOC do 24h";
   if(type==="N") return "NOC";
   return "";
 }
@@ -1640,7 +1598,6 @@ function loadMonth(){
 function readSettingsFromForm(){
   settings.dayHours=Number($("dayHours").value)||12;
   settings.nightHours=Number($("nightHours").value)||12;
-  settings.halfNightHours=Number($("halfNightHours").value)||6;
   settings.leaveHoursPerDay=Number($("leaveHoursPerDay").value)||0;
   settings.dayNeed=Number($("dayNeed").value)||1;
   settings.nightNeed=Number($("nightNeed").value)||1;
@@ -1659,8 +1616,8 @@ function renderSettingsSummary(){
   if(!el) return;
   el.innerHTML =
     `Po–pá: <b>${settings.dayNeed}× DEN</b> (${settings.dayHours} h) + `+
-    `<b>${settings.nightNeed}× NOC</b> (${settings.nightHours} h, případně do půlnoci `+
-    `${settings.halfNightHours} h). Sobota: <b>${settings.dayNeed}× DEN</b>. `+
+    `<b>${settings.nightNeed}× NOC</b> (${settings.nightHours} h). `+
+    `Sobota: <b>${settings.dayNeed}× DEN</b>. `+
     `Neděle: <b>${settings.nightNeed}× NOC</b>.`;
 }
 
@@ -1683,8 +1640,10 @@ function isCurrentMonthDate(date){
  * Tvrdá kontrola pro generátor / ruční přesuny:
  * - dovolená / VOLNO / omezení
  * - pouze jedna směna za den
- * - po NOC (i "do půlnoci") nesmí následovat DEN
- * - nikdy 3 směny za sebou (i napříč hranicí měsíce)
+ * - po NOC nesmí následovat DEN
+ * - tři směny v řadě jsou povolené jen jako DEN-DEN-NOC nebo DEN-NOC-NOC
+ * - čtyři (a víc) směny v řadě nejsou nikdy povolené (i napříč hranicí měsíce)
+ * - před nástupem na dovolenou nesmí být noční směna
  */
 function shiftAllowed(nurse,date,type){
 
@@ -1707,18 +1666,42 @@ function shiftAllowed(nurse,date,type){
 
   const previousDate=dateOffset(date,-1);
   const twoDaysAgo=dateOffset(date,-2);
+  const threeDaysAgo=dateOffset(date,-3);
+
   const previousType=getShift(previousDate,nurse.id);
+  const twoDaysAgoType=getShift(twoDaysAgo,nurse.id);
+  const threeDaysAgoType=getShift(threeDaysAgo,nurse.id);
 
   /*
-   * Po noční (i do půlnoci) není následující den DEN.
+   * Po noční není následující den DEN.
    */
   if(type==="D" && isNightType(previousType))
     return false;
 
   /*
-   * Absolutní zákaz 3 směn v řadě (počítá se i přes hranici měsíce).
+   * Tři směny v řadě jsou povolené pouze v pořadí DEN-DEN-NOC
+   * nebo DEN-NOC-NOC. Čtyři (a víc) v řadě nejsou nikdy povolené.
    */
-  if(previousType && getShift(twoDaysAgo,nurse.id))
+  if(previousType && twoDaysAgoType){
+
+    if(threeDaysAgoType)
+      return false;
+
+    const okTriple =
+      (twoDaysAgoType==="D" && previousType==="D" && type==="N") ||
+      (twoDaysAgoType==="D" && previousType==="N" && type==="N");
+
+    if(!okTriple)
+      return false;
+
+  }
+
+  /*
+   * Před nástupem na dovolenou nesmí být noční směna.
+   */
+  const nextDate=dateOffset(date,1);
+
+  if(isNightType(type) && isLeave(nurse.id,nextDate) && !isLeave(nurse.id,date))
     return false;
 
   return true;
@@ -1806,16 +1789,16 @@ function validateSchedule(){
 
   nurses.forEach(nurse=>{
     let run=0;
-    let previousType=null;
+    let t1=null,t2=null,t3=null; // t1 = včera, t2 = předevčírem, t3 = 3 dny zpět
 
-    for(let offset=-2;offset<totalDays;offset++){
+    for(let offset=-3;offset<totalDays;offset++){
       const date=dateOffset(start,offset);
       const inMonth=date.startsWith(monthKey);
       const type=shifts[date]?.[nurse.id] || null;
 
       if(!type){
         run=0;
-        previousType=null;
+        t1=t2=t3=null;
         continue;
       }
 
@@ -1831,12 +1814,26 @@ function validateSchedule(){
         errors.push(`${nurse.name}: NOC v omezení ${date}`);
 
       run++;
-      if(inMonth && run>=3)
-        errors.push(`${nurse.name}: 3 směny za sebou (${date})`);
-      if(inMonth && isNightType(previousType) && type==="D")
+
+      if(inMonth && isNightType(t1) && type==="D")
         errors.push(`${nurse.name}: DEN po NOCI (${date})`);
 
-      previousType=type;
+      if(inMonth && run>=4)
+        errors.push(`${nurse.name}: čtyři směny za sebou (${date})`);
+
+      if(inMonth && run===3){
+        const okTriple =
+          (t2==="D" && t1==="D" && type==="N") ||
+          (t2==="D" && t1==="N" && type==="N");
+        if(!okTriple)
+          errors.push(`${nurse.name}: tři směny za sebou musí být DEN-DEN-NOC nebo DEN-NOC-NOC (${date})`);
+      }
+
+      const nextDate=dateOffset(date,1);
+      if(inMonth && isNightType(type) && isLeave(nurse.id,nextDate) && !isLeave(nurse.id,date))
+        errors.push(`${nurse.name}: noční směna před nástupem na dovolenou (${date})`);
+
+      t3=t2; t2=t1; t1=type;
     }
   });
 
@@ -1966,6 +1963,65 @@ function assignShift(date,type,needed,warnings,targets,randomize=false){
   if(selected.length<needed){
     warnings.push(`${date}: ${shiftLabel(type)} – ${selected.length}/${needed}`);
   }
+}
+
+
+/* =========================================================
+   ZAJIŠTĚNÍ SMĚNY PO NÁVRATU Z DOVOLENÉ
+   ========================================================= */
+
+// "Hned další den by měla být směna" – jde o doporučení (měla by),
+// ne o tvrdý zákaz jako u ostatních pravidel, takže se to řeší jako
+// best-effort krok po vygenerování/přerozdělení: pokud den po skončení
+// dovolené nemá sestra směnu, generátor se ji pokusí bezpečně doplnit.
+// Pokud to nejde bez porušení tvrdých pravidel, jen se to nahlásí
+// jako upozornění (stejně jako neobsazené směny jinde v generátoru).
+function ensureShiftAfterLeave(warnings,targets){
+
+  const processed=new Set();
+
+  leaves.forEach(leave=>{
+
+    const returnDate=dateOffset(leave.to,1);
+
+    if(!isCurrentMonthDate(returnDate))
+      return;
+
+    const key=leave.nurse_id+"|"+returnDate;
+    if(processed.has(key)) return;
+    processed.add(key);
+
+    const nurse=nurses.find(n=>sameNurse(n.id,leave.nurse_id));
+    if(!nurse) return;
+
+    if(getShift(returnDate,nurse.id))
+      return;
+
+    const options=["D","N"]
+      .filter(type=>shiftAllowed(nurse,returnDate,type))
+      .sort((a,b)=>generatorScore(nurse,returnDate,a,targets)-generatorScore(nurse,returnDate,b,targets));
+
+    let assigned=false;
+
+    for(const type of options){
+      if(!shifts[returnDate]) shifts[returnDate]={};
+      shifts[returnDate][nurse.id]=type;
+
+      if(validateSchedule().length){
+        delete shifts[returnDate][nurse.id];
+        continue;
+      }
+
+      assigned=true;
+      break;
+    }
+
+    if(!assigned){
+      warnings.push(`${returnDate}: ${nurse.name} – po dovolené se nepodařilo zajistit navazující směnu`);
+    }
+
+  });
+
 }
 
 
@@ -2184,6 +2240,7 @@ function generate(randomize=false){
   shifts=best;
   optimizeSchedule(targets);
   rebalanceOvertime(targets);
+  ensureShiftAfterLeave(bestWarnings,targets);
   renderCalendar();
   renderStats();
   cacheLocal();
@@ -2234,11 +2291,11 @@ function validateManualChange(candidate){
 
   nurses.forEach(nurse=>{
     let run=0;
-    let previousType=null;
+    let t1=null,t2=null,t3=null; // t1 = včera, t2 = předevčírem, t3 = 3 dny zpět
 
-    // Začneme dvěma dny před začátkem měsíce, aby se kontroloval
-    // i přechod z předchozího měsíce.
-    for(let offset=-2; offset<totalDays; offset++){
+    // Začneme třemi dny před začátkem měsíce, aby se kontroloval
+    // i přechod z předchozího měsíce (kvůli pravidlu tří směn v řadě).
+    for(let offset=-3; offset<totalDays; offset++){
       const date=dateOffset(monthStart,offset);
       const inMonth=date.startsWith(monthKey);
       const type=merged[date]?.[nurse.id] || null;
@@ -2257,18 +2314,30 @@ function validateManualChange(candidate){
             errors.push(`${nurse.name}: DEN v omezení bez DEN (${date}).`);
           if(isNightType(type) && rr.some(x=>x.type==="night"))
             errors.push(`${nurse.name}: NOC v omezení bez NOC (${date}).`);
+
+          if(isNightType(t1) && type==="D")
+            errors.push(`${nurse.name}: DEN bezprostředně po NOCI (${date}).`);
+
+          if(run>=4)
+            errors.push(`${nurse.name}: čtyři směny za sebou (${date}).`);
+
+          if(run===3){
+            const okTriple =
+              (t2==="D" && t1==="D" && type==="N") ||
+              (t2==="D" && t1==="N" && type==="N");
+            if(!okTriple)
+              errors.push(`${nurse.name}: tři směny za sebou musí být DEN-DEN-NOC nebo DEN-NOC-NOC (${date}).`);
+          }
+
+          const nextDate=dateOffset(date,1);
+          if(isNightType(type) && isLeave(nurse.id,nextDate) && !isLeave(nurse.id,date))
+            errors.push(`${nurse.name}: noční směna před nástupem na dovolenou (${date}).`);
         }
 
-        if(run>=3 && inMonth)
-          errors.push(`${nurse.name}: 3 směny za sebou (${date}).`);
-
-        if(isNightType(previousType) && type==="D" && inMonth)
-          errors.push(`${nurse.name}: DEN bezprostředně po NOCI (${date}).`);
-
-        previousType=type;
+        t3=t2; t2=t1; t1=type;
       }else{
         run=0;
-        previousType=null;
+        t1=t2=t3=null;
       }
     }
   });
@@ -2341,29 +2410,6 @@ function setManualShift(sourceDate,sourceNurseId,targetDate,targetNurseId){
     "ok"
   );
   return true;
-}
-
-function toggleHalfNight(date,nurseId,ev){
-  ev.stopPropagation();
-  const current=getShift(date,nurseId);
-  if(!isNightType(current)) return;
-
-  const candidate=cloneShifts();
-  candidate[date][nurseId]= current==="N" ? "Nh" : "N";
-
-  // Přepínání "do půlnoci" nemění obsazenost ani pořadí směn, takže
-  // to jde vždy - jen ověříme, že nikde nevznikl jiný problém.
-  const errors=validateManualChange(candidate);
-  if(errors.length){
-    message(`<b>Nelze přepnout.</b><br>${esc(errors.slice(0,3).join(" · "))}`,"err");
-    return;
-  }
-
-  Object.assign(shifts,candidate);
-  renderCalendar();
-  renderStats();
-  cacheLocal();
-  if(sb) saveAll();
 }
 
 function startShiftDrag(ev,date,nurseId,type){
@@ -2720,18 +2766,13 @@ function renderCalendar(){
 
           cell+=`
             <span
-              class="badge ${isNightType(shift) ? (shift==="Nh"?"N2":"N") : "D"} shift-draggable ${isSelected ? "shift-selected" : ""}"
+              class="badge ${isNightType(shift) ? "N" : "D"} shift-draggable ${isSelected ? "shift-selected" : ""}"
               draggable="true"
               title="Přetáhni směnu na jiné políčko, nebo klikni pro výměnu"
               ondragstart="startShiftDrag(event,'${date}','${esc(String(nurse.id))}','${shift}')"
               onclick="clickCalendarShift('${date}','${esc(String(nurse.id))}',event)"
             >
               ${ shiftLabel(shift) }
-              ${
-                isNightType(shift)
-                ? `<button type="button" class="half-toggle no-print" title="Přepnout NOC / NOC do půlnoci" onclick="toggleHalfNight('${date}','${esc(String(nurse.id))}',event)">½</button>`
-                : ""
-              }
             </span>
           `;
 
@@ -3703,9 +3744,6 @@ function init(){
 
   $("nightHours").value=
     settings.nightHours;
-
-  $("halfNightHours").value=
-    settings.halfNightHours;
 
   $("leaveHoursPerDay").value=
     settings.leaveHoursPerDay;
