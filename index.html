@@ -1709,23 +1709,29 @@ function generatorScore(nurse,date,type,targets,randomize=false){
   const nightAfter=st.night+(type==="N"?1:0);
   const weekendAfter=st.weekends+(isWeekend(date)?1:0);
 
-  // Nižší skóre = lepší kandidát.
-  // Tvrdé podmínky řeší shiftAllowed(), zde jen férovost.
-  const hTarget=Math.max(t?.hours||monthFund,12);
-  const cTarget=Math.max(t?.count||1,1);
-  const dTarget=Math.max(t?.day||1,1);
-  const nTarget=Math.max(t?.night||1,1);
-  const wTarget=Math.max(t?.weekends||1,1);
+  const hTarget=Math.max(Number(t?.hours)||monthFund,12);
+  const cTarget=Math.max(Number(t?.count)||1,1);
+  const dTarget=Math.max(Number(t?.day)||1,1);
+  const nTarget=Math.max(Number(t?.night)||1,1);
+  const wTarget=Math.max(Number(t?.weekends)||1,1);
 
   let score=0;
-  score += Math.pow((hoursAfter-(t?.hours||hTarget))/hTarget,2)*700;
-  score += Math.pow((st.count+1-(t?.count||cTarget))/cTarget,2)*250;
-  score += Math.pow((dayAfter-(t?.day||dTarget))/dTarget,2)*180;
-  score += Math.pow((nightAfter-(t?.night||nTarget))/nTarget,2)*180;
-  score += Math.pow((weekendAfter-(t?.weekends||wTarget))/wTarget,2)*1200;
 
-  // Když má sestra výrazně méně směn než ostatní, zvýhodni ji.
-  score += st.count*0.05;
+  // Fond hodin je hlavní kritérium. U úvazku 0,5 je při fondu 168 h
+  // cílem 84 h. Po dosažení cíle je další směna výrazně penalizována.
+  const beforeRatio=st.hours/hTarget;
+  const afterRatio=hoursAfter/hTarget;
+  score += Math.pow(afterRatio-1,2)*3000;
+  if(afterRatio>1) score += (afterRatio-1)*1800;
+  if(beforeRatio<1 && afterRatio<=1) score -= (1-afterRatio)*220;
+
+  // Počet směn je podpůrné kritérium – hodiny mají přednost.
+  score += Math.pow((st.count+1-cTarget)/cTarget,2)*180;
+  score += Math.pow((dayAfter-dTarget)/dTarget,2)*100;
+  score += Math.pow((nightAfter-nTarget)/nTarget,2)*100;
+
+  // Víkendy se stále rozdělují co nejrovnoměrněji vzhledem k úvazku.
+  score += Math.pow((weekendAfter-wTarget)/wTarget,2)*900;
 
   if(randomize) score += Math.random()*0.15;
   return score;
@@ -1984,14 +1990,7 @@ function getNurseStats(nurse){
 
 function getGenerationTargets(){
 
-  const totalFraction=
-    nurses.reduce(
-      (sum,n)=>sum+(Number(n.fraction)||1),
-      0
-    ) || 1;
-
   const dates=[];
-
   const [year,month]=monthKey.split("-").map(Number);
   const totalDays=daysInMonth(year,month);
 
@@ -2018,25 +2017,26 @@ function getGenerationTargets(){
   });
 
   const totalSlots=daySlots+nightSlots;
-  const totalHours=
-    daySlots*settings.dayHours+
-    nightSlots*settings.nightHours;
+  const avgShiftHours=(settings.dayHours+settings.nightHours)/2 || 12;
 
   return nurses.map(n=>{
     const fraction=Number(n.fraction)||1;
-    const share=fraction/totalFraction;
+
+    // Cíl hodin je přímo měsíční fond × úvazek.
+    // Např. 168 × 0,5 = 84 h.
+    const targetHours=monthFund*fraction;
+    const targetCount=targetHours/avgShiftHours;
 
     return {
       nurse:n,
-      hours:totalHours*share,
-      count:totalSlots*share,
-      day:daySlots*share,
-      night:nightSlots*share,
-      weekends:weekendSlots*share
+      hours:targetHours,
+      count:targetCount,
+      day:targetCount*(daySlots/Math.max(totalSlots,1)),
+      night:targetCount*(nightSlots/Math.max(totalSlots,1)),
+      weekends:targetCount*(weekendSlots/Math.max(totalSlots,1))
     };
   });
 }
-
 
 /* =========================================================
    GLOBÁLNÍ OPTIMALIZACE SPRAVEDLNOSTI
@@ -2313,7 +2313,8 @@ function setManualShift(sourceDate,sourceNurseId,targetDate,targetNurseId){
   if(sb) saveAll();
 
   message(
-    `<b>Směna ${sourceType==="D"?"DEN":"NOC"} byla přesunuta.</b><br>
+    `<b>Směny byly prohozeny.</b><br>
+     ${sourceType==="D"?"DEN":"NOC"} byl přesunut na cílovou sestru.
      Statistiky byly okamžitě přepočítány.`,
     "ok"
   );
@@ -2354,22 +2355,68 @@ function clickCalendarShift(date,nurseId,ev){
   ev.stopPropagation();
   if(!getShift(date,nurseId)) return;
 
-  selectedShift={date,nurseId};
-  renderCalendar();
-  message(
-    "Směna je vybraná. Klikni na cílové políčko, kam ji chceš přesunout.",
-    "ok"
+  // První kliknutí = vyber zdrojovou směnu.
+  if(!selectedShift){
+    selectedShift={date,nurseId};
+    renderCalendar();
+    message(
+      "<b>Směna vybrána.</b><br>"+
+      "Klikni na jinou směnu, se kterou ji chceš prohodit.",
+      "ok"
+    );
+    return;
+  }
+
+  // Druhé kliknutí přímo na jinou směnu = prohození.
+  if(
+    selectedShift.date===date &&
+    String(selectedShift.nurseId)===String(nurseId)
+  ){
+    selectedShift=null;
+    renderCalendar();
+    return;
+  }
+
+  setManualShift(
+    selectedShift.date,
+    selectedShift.nurseId,
+    date,
+    nurseId
   );
 }
 
 function clickCalendarCell(date,nurseId){
   if(!selectedShift) return;
-  if(selectedShift.date===date && String(selectedShift.nurseId)===String(nurseId)){
+
+  if(
+    selectedShift.date===date &&
+    String(selectedShift.nurseId)===String(nurseId)
+  ){
     selectedShift=null;
     renderCalendar();
     return;
   }
-  setManualShift(selectedShift.date,selectedShift.nurseId,date,nurseId);
+
+  const targetShift=getShift(date,nurseId);
+
+  if(targetShift){
+    setManualShift(
+      selectedShift.date,
+      selectedShift.nurseId,
+      date,
+      nurseId
+    );
+    return;
+  }
+
+  // Při přesunu na prázdné políčko by vznikl neobsazený počet lidí
+  // na původní směně. Proto je bezpečná ruční změna standardně výměna.
+  message(
+    "<b>Na prázdné políčko směnu nelze přímo přesunout.</b><br>"+
+    "Aby zůstal zachovaný počet 3 DEN / 2 NOC, klikni na směnu jiné sestry "+
+    "a směny se prohodí.",
+    "err"
+  );
 }
 
 /* =========================================================
