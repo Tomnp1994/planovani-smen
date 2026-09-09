@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dialýza – plánování směn</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:#f4f7fb;color:#18212f}
+header{background:#0f5f73;color:#fff;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+h1,h2,h3{margin:0 0 12px}header h1{font-size:21px}.wrap{max-width:1500px;margin:auto;padding:20px}
+nav{display:flex;gap:8px;flex-wrap:wrap}button{border:0;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:600;background:#e8eef4;color:#18212f}
+button.primary{background:#0f718a;color:white}button.danger{background:#fee2e2;color:#991b1b}button:disabled{opacity:.5;cursor:not-allowed}
+.tabs{display:flex;gap:8px;margin-bottom:18px}.tab{background:white;border:1px solid #dce4ec}.tab.active{background:#0f5f73;color:#fff}
+.card{background:#fff;border:1px solid #dde5ed;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 2px 8px #17324d0a}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:12px}@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.grid{grid-template-columns:1fr}}
+label{font-size:13px;font-weight:700;display:block;margin-bottom:5px}input,select,textarea{width:100%;padding:9px;border:1px solid #ccd7e2;border-radius:7px;background:#fff;font:inherit}textarea{min-height:80px}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{border:1px solid #d9e2ea;padding:7px;text-align:center}th{background:#eef4f7;position:sticky;top:0;z-index:1}.left{text-align:left}
+.scroll{overflow:auto;max-height:70vh}.badge{display:inline-block;padding:3px 7px;border-radius:20px;font-size:11px;font-weight:700}.D{background:#dff4ff;color:#075985}.N{background:#ede9fe;color:#5b21b6}.X{background:#fee2e2;color:#991b1b}.V{background:#dcfce7;color:#166534}.empty{color:#8a98a8}
+.actions{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}@media(max-width:1000px){.stats{grid-template-columns:repeat(3,1fr)}}.stat{background:#f7fafc;border:1px solid #e0e7ef;border-radius:9px;padding:12px}.stat b{display:block;font-size:22px}
+.hidden{display:none}.notice{padding:10px;border-radius:8px;background:#fff7d6;border:1px solid #f0dc82}.ok{background:#e8f8ee;border-color:#a9dfbd}.err{background:#fff0f0;border-color:#efb1b1}
+.small{font-size:12px;color:#667585}.right{text-align:right}.danger-text{color:#b42318}.print-only{display:none}
+@media print{body{background:#fff}.no-print,header,.tabs,.card:not(.print-card){display:none!important}.print-only{display:block}.wrap{padding:0}.scroll{max-height:none;overflow:visible}table{font-size:9px}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Dialýza – plánování směn</h1><div class="small" style="color:#d6edf3">Jednostránková aplikace · Supabase</div></div>
+  <nav class="no-print"><button onclick="saveAll()">Uložit</button><button class="primary" onclick="generate()">Generovat směny</button><button onclick="window.print()">Export / tisk PDF</button></nav>
+</header>
+<div class="wrap">
+<div id="msg" class="card no-print hidden"></div>
+
+<div class="tabs no-print">
+ <button class="tab active" onclick="showTab('plan',this)">Plán</button>
+ <button class="tab" onclick="showTab('nurses',this)">Sestry</button>
+ <button class="tab" onclick="showTab('req',this)">Požadavky a dovolené</button>
+ <button class="tab" onclick="showTab('stats',this)">Statistiky</button>
+ <button class="tab" onclick="showTab('settings',this)">Nastavení</button>
+</div>
+
+<section id="plan">
+ <div class="card">
+  <div class="grid">
+   <div><label>Měsíc</label><input id="month" type="month" onchange="loadMonth()"></div>
+   <div><label>Fond hodin měsíce</label><input id="fund" type="number" min="0" step="1" value="168"></div>
+   <div><label>Počet sester</label><input id="nurseCount" disabled></div>
+   <div class="actions"><button class="primary" onclick="generate()">Generovat směny</button><button onclick="clearMonth()">Vymazat směny</button></div>
+  </div>
+ </div>
+ <div class="card print-card">
+  <h2>Kalendář směn</h2>
+  <div id="calendar" class="scroll"></div>
+ </div>
+</section>
+
+<section id="nurses" class="hidden">
+ <div class="card">
+  <div class="actions"><button class="primary" onclick="addNurse()">+ Přidat sestru</button><span class="small">Výchozí stav obsahuje 9 sester.</span></div>
+ </div>
+ <div class="card"><div class="scroll"><table><thead><tr><th>Jméno</th><th>Úvazek</th><th>Akce</th></tr></thead><tbody id="nurseRows"></tbody></table></div></div>
+</section>
+
+<section id="req" class="hidden">
+ <div class="card">
+  <h2>Dovolená</h2>
+  <div class="grid">
+   <div><label>Sestra</label><select id="leaveNurse"></select></div>
+   <div><label>Od</label><input id="leaveFrom" type="date"></div>
+   <div><label>Do</label><input id="leaveTo" type="date"></div>
+   <div><label>Započítat do fondu</label><select id="leaveFund"><option value="1">Ano</option><option value="0">Ne</option></select></div>
+  </div>
+  <br><button class="primary" onclick="addLeave()">Přidat dovolenou</button>
+  <div id="leaveList" style="margin-top:14px"></div>
+ </div>
+ <div class="card">
+  <h2>Individuální požadavek / omezení</h2>
+  <div class="grid">
+   <div><label>Sestra</label><select id="reqNurse"></select></div>
+   <div><label>Datum</label><input id="reqDate" type="date"></div>
+   <div><label>Typ</label><select id="reqType"><option value="off">Nemůže pracovat</option><option value="day">Nemůže denní</option><option value="night">Nemůže noční</option><option value="preferDay">Preferuje denní</option><option value="preferNight">Preferuje noční</option></select></div>
+   <div><label>Poznámka</label><input id="reqNote"></div>
+  </div>
+  <br><button class="primary" onclick="addReq()">Přidat požadavek</button>
+  <div id="reqList" style="margin-top:14px"></div>
+ </div>
+</section>
+
+<section id="stats" class="hidden">
+ <div class="card"><h2>Statistiky</h2><div id="statsBox" class="stats"></div></div>
+ <div class="card"><div class="scroll"><table><thead><tr><th>Sestra</th><th>Hodiny</th><th>Směny</th><th>Denní</th><th>Noční</th><th>Víkendy</th><th>Dovolená</th><th>Odchylka od cíle</th></tr></thead><tbody id="statsRows"></tbody></table></div></div>
+</section>
+
+<section id="settings" class="hidden">
+ <div class="card">
+  <h2>Nastavení směn</h2>
+  <div class="grid">
+   <div><label>Denní směna (h)</label><input id="dayHours" type="number" value="12"></div>
+   <div><label>Noční směna (h)</label><input id="nightHours" type="number" value="12"></div>
+   <div><label>Noční do půlnoci (h)</label><input id="halfNightHours" type="number" value="6"></div>
+   <div><label>Sestry na denní</label><input id="dayNeed" type="number" value="3"></div>
+   <div><label>Sestry na noční</label><input id="nightNeed" type="number" value="2"></div>
+  </div>
+  <p class="small">Sobota = pouze denní. Neděle = pouze noční. Generátor hlídá zákaz 3 směn za sebou a zákaz denní po noční. Dovolená se pro odpočinek bere jako obsazený den; její započtení do fondu je samostatné.</p>
+ </div>
+ <div class="card">
+  <h2>Supabase</h2>
+  <p class="small">Do zdrojového kódu doplň SUPABASE_URL a SUPABASE_ANON_KEY. Anon key může být v klientském HTML, ale nikdy sem nevkládej service_role key. Databázi zabezpeč RLS.</p>
+ </div>
+</section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ===== SUPABASE: VLOŽ SVÉ ÚDAJE ===== */
+const SUPABASE_URL = "https://wtdigychrtqnvfzqvbrl.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_HeOLseijNWs_dERdcKvNBw_1RKDx7A9";
+const sb = (SUPABASE_URL && SUPABASE_ANON_KEY) ? window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY) : null;
+
+/* ===== LOCAL APP STATE ===== */
+let nurses=[], leaves=[], requests=[], shifts={}, monthKey="", monthFund=168;
+let settings={dayHours:12,nightHours:12,halfNightHours:6,dayNeed:3,nightNeed:2};
+
+const $=id=>document.getElementById(id);
+function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random()}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+function daysInMonth(y,m){return new Date(y,m,0).getDate()}
+function dateStr(y,m,d){return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`}
+function weekend(d){let x=new Date(d+"T12:00:00").getDay();return x===0||x===6}
+function isLeave(nid,d){return leaves.some(x=>x.nurse_id===nid&&d>=x.from&&d<=x.to)}
+function leaveObj(nid,d){return leaves.find(x=>x.nurse_id===nid&&d>=x.from&&d<=x.to)}
+function req(nid,d){return requests.filter(x=>x.nurse_id===nid&&x.date===d)}
+function showTab(id,btn){document.querySelectorAll("section").forEach(x=>x.classList.add("hidden"));$(id).classList.remove("hidden");document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active");if(id==="stats")renderStats()}
+function message(t,kind=""){let e=$("msg");e.innerHTML=t;e.className="card no-print "+(kind||"");e.classList.remove("hidden");setTimeout(()=>e.classList.add("hidden"),5000)}
+
+function init(){
+ let now=new Date(); $("month").value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+ nurses=Array.from({length:9},(_,i)=>({id:uid(),name:`Sestra ${i+1}`,fraction:1}));
+ renderNurses(); renderReq(); loadMonth(); renderCalendar();
+}
+function renderNurses(){
+ $("nurseCount").value=nurses.length;
+ $("nurseRows").innerHTML=nurses.map((n,i)=>`<tr>
+ <td><input value="${esc(n.name)}" onchange="nurses[${i}].name=this.value"></td>
+ <td><input type="number" min=".1" max="1" step=".1" value="${n.fraction}" onchange="nurses[${i}].fraction=+this.value"></td>
+ <td><button class="danger" onclick="removeNurse('${n.id}')">Smazat</button></td></tr>`).join("");
+ ["leaveNurse","reqNurse"].forEach(id=>$(id).innerHTML=nurses.map(n=>`<option value="${n.id}">${esc(n.name)}</option>`).join(""));
+}
+function addNurse(){nurses.push({id:uid(),name:`Sestra ${nurses.length+1}`,fraction:1});renderNurses()}
+function removeNurse(id){if(!confirm("Opravdu smazat sestru?"))return;nurses=nurses.filter(n=>n.id!==id);leaves=leaves.filter(x=>x.nurse_id!==id);requests=requests.filter(x=>x.nurse_id!==id);renderNurses();renderReq();renderCalendar()}
+function addLeave(){let x={id:uid(),nurse_id:$("leaveNurse").value,from:$("leaveFrom").value,to:$("leaveTo").value,count_fund:$("leaveFund").value==="1"};if(!x.from||!x.to||x.from>x.to)return message("Zkontroluj datum dovolené.","err");leaves.push(x);renderReq()}
+function addReq(){let x={id:uid(),nurse_id:$("reqNurse").value,date:$("reqDate").value,type:$("reqType").value,note:$("reqNote").value};if(!x.date)return message("Vyber datum.","err");requests.push(x);renderReq()}
+function renderReq(){
+ $("leaveList").innerHTML=leaves.length?leaves.map((x,i)=>{let n=nurses.find(n=>n.id===x.nurse_id);return `<div class="card"><b>${esc(n?.name||"—")}</b> · ${x.from} – ${x.to} · fond: ${x.count_fund?"ano":"ne"} <button class="danger" onclick="leaves.splice(${i},1);renderReq()">Smazat</button></div>`}).join(""):"<span class='small'>Žádná dovolená.</span>";
+ $("reqList").innerHTML=requests.length?requests.map((x,i)=>{let n=nurses.find(n=>n.id===x.nurse_id);return `<div class="card"><b>${esc(n?.name||"—")}</b> · ${x.date} · ${esc(x.type)} ${x.note?"· "+esc(x.note):""} <button class="danger" onclick="requests.splice(${i},1);renderReq()">Smazat</button></div>`}).join(""):"<span class='small'>Žádné požadavky.</span>";
+}
+function loadMonth(){
+ monthKey=$("month").value;monthFund=+$("fund").value||168;renderCalendar();renderStats();
+}
+function shiftAllowed(n,d,type){
+ if(isLeave(n.id,d))return false;
+ let r=req(n.id,d);if(r.some(x=>x.type==="off"||(type==="D"&&x.type==="day")||(type==="N"&&x.type==="night")))return false;
+ if(type==="D" && d.endsWith("")){}
+ let dt=new Date(d+"T12:00:00"), dow=dt.getDay();
+ if(dow===6 && type!=="D")return false;if(dow===0 && type!=="N")return false;
+ let prev=prevDate(d), prev2=prevDate(prev);
+ let a=shifts[prev]?.[n.id], b=shifts[prev2]?.[n.id];
+ if(a && b)return false;
+ if(a==="N" && type==="D")return false;
+ return true;
+}
+function prevDate(d){let x=new Date(d+"T12:00:00");x.setDate(x.getDate()-1);return x.toISOString().slice(0,10)}
+function score(n,d,type){
+ let total=0, dc=0,nc=0,wc=0,h=0;
+ Object.entries(shifts).forEach(([date,ss])=>{let s=ss[n.id];if(s){h+=s==="D"?settings.dayHours:settings.nightHours; if(s==="D")dc++;else nc++;if(weekend(date))wc++}});
+ if(isLeave(n.id,d)){let l=leaveObj(n.id,d);if(l?.count_fund)h+=settings.dayHours*n.fraction/Math.max(1,daysInMonth(+monthKey.slice(0,4),+monthKey.slice(5)));return 99999}
+ let ideal=monthFund*n.fraction;
+ total += Math.abs((h-(type==="D"?settings.dayHours:settings.nightHours))-ideal)*1.0;
+ total += dc*0.8+nc*0.8+wc*2;
+ let r=req(n.id,d);if(r.some(x=>x.type==="preferDay"&&type==="D")||r.some(x=>x.type==="preferNight"&&type==="N"))total-=5;
+ return total;
+}
+function generate(){
+ if(!monthKey)return;
+ settings.dayHours=+$("dayHours").value||12;settings.nightHours=+$("nightHours").value||12;settings.halfNightHours=+$("halfNightHours").value||6;settings.dayNeed=+$("dayNeed").value||3;settings.nightNeed=+$("nightNeed").value||2;
+ shifts={};let [y,m]=monthKey.split("-").map(Number), len=daysInMonth(y,m);
+ for(let d=1;d<=len;d++){
+   let date=dateStr(y,m,d), dow=new Date(date+"T12:00:00").getDay();
+   let type=dow===6?"D":dow===0?"N":null;
+   let need=type==="D"?settings.dayNeed:type==="N"?settings.nightNeed:null;
+   let candidates=nurses.filter(n=>shiftAllowed(n,date,type||"D"));
+   if(!type){
+     // alternate day/night, with a fairness-aware comparison
+     let ds=nurses.filter(n=>shiftAllowed(n,date,"D")).sort((a,b)=>score(a,date,"D")-score(b,date,"D"));
+     let ns=nurses.filter(n=>shiftAllowed(n,date,"N")).sort((a,b)=>score(a,date,"N")-score(b,date,"N"));
+     let dscore=ds.slice(0,settings.dayNeed).reduce((a,n)=>a+score(n,date,"D"),0);
+     let nscore=ns.slice(0,settings.nightNeed).reduce((a,n)=>a+score(n,date,"N"),0);
+     type=dscore<=nscore?"D":"N";need=type==="D"?settings.dayNeed:settings.nightNeed;candidates=(type==="D"?ds:ns);
+   } else candidates=candidates.sort((a,b)=>score(a,date,type)-score(b,date,type));
+   if(candidates.length<need){message(`Nelze plně obsadit ${date}. Potřeba ${need}, dostupných ${candidates.length}.`, "err");}
+   shifts[date]={};candidates.slice(0,need).forEach(n=>shifts[date][n.id]=type);
+ }
+ renderCalendar();renderStats();message("Směny byly vygenerovány.","ok");
+}
+function shiftLabel(s){return s==="D"?"DEN":s==="N"?"NOC":"—"}
+function renderCalendar(){
+ if(!monthKey){$("calendar").innerHTML="";return}
+ let [y,m]=monthKey.split("-").map(Number),len=daysInMonth(y,m);
+ let h="<table><thead><tr><th class='left'>Sestra</th>";
+ for(let d=1;d<=len;d++){let ds=dateStr(y,m,d);h+=`<th>${d}<br><span class="small">${["Ne","Po","Út","St","Čt","Pá","So"][new Date(ds+"T12:00:00").getDay()]}</span></th>`}h+="<th>Celkem</th></tr></thead><tbody>";
+ nurses.forEach(n=>{let hours=0;h+=`<tr><td class="left"><b>${esc(n.name)}</b><br><span class="small">${n.fraction}</span></td>`;
+ for(let d=1;d<=len;d++){let ds=dateStr(y,m,d),s=shifts[ds]?.[n.id],lv=leaveObj(n.id,ds);if(lv){h+=`<td><span class="badge V">DOV</span></td>`}else if(s){hours+=s==="D"?settings.dayHours:settings.nightHours;h+=`<td><span class="badge ${s}">${shiftLabel(s)}</span></td>`}else h+="<td class='empty'>·</td>"}
+ h+=`<td><b>${hours} h</b></td></tr>`});
+ $("calendar").innerHTML=h+"</tbody></table>";
+}
+function renderStats(){
+ if(!$("statsRows"))return;let totals=nurses.map(n=>{let hours=0,day=0,night=0,w=0,lv=0;
+ Object.entries(shifts).forEach(([d,ss])=>{let s=ss[n.id];if(s){hours+=s==="D"?settings.dayHours:settings.nightHours;s==="D"?day++:night++;if(weekend(d))w++}});
+ leaves.filter(x=>x.nurse_id===n.id).forEach(x=>{let a=new Date(x.from+"T12:00:00"),b=new Date(x.to+"T12:00:00");while(a<=b){if(a.toISOString().slice(0,7)===monthKey)lv++;a.setDate(a.getDate()+1)}});return {n,hours,day,night,w,lv}}); 
+ let avg=totals.length?totals.reduce((a,x)=>a+x.hours,0)/totals.length:0;
+ $("statsRows").innerHTML=totals.map(x=>`<tr><td class=left>${esc(x.n.name)}</td><td>${x.hours}</td><td>${x.day+x.night}</td><td>${x.day}</td><td>${x.night}</td><td>${x.w}</td><td>${x.lv}</td><td>${(x.hours-avg).toFixed(1)} h</td></tr>`).join("");
+ $("statsBox").innerHTML=`<div class=stat><span>Sestry</span><b>${nurses.length}</b></div><div class=stat><span>Směny</span><b>${totals.reduce((a,x)=>a+x.day+x.night,0)}</b></div><div class=stat><span>Denní</span><b>${totals.reduce((a,x)=>a+x.day,0)}</b></div><div class=stat><span>Noční</span><b>${totals.reduce((a,x)=>a+x.night,0)}</b></div><div class=stat><span>Víkendové</span><b>${totals.reduce((a,x)=>a+x.w,0)}</b></div><div class=stat><span>Průměr hodin</span><b>${avg.toFixed(1)}</b></div>`;
+}
+function clearMonth(){if(confirm("Vymazat směny tohoto měsíce?")){shifts={};renderCalendar();renderStats()}}
+async function saveAll(){
+ if(!sb){localStorage.setItem("dialysisPlanner",JSON.stringify({nurses,leaves,requests,shifts,settings,monthKey,monthFund}));return message("Uloženo lokálně. Pro Supabase doplň klíče v HTML.","ok")}
+ try{
+  // Requires tables from the supplied SQL setup.
+  await sb.from("nurses").upsert(nurses.map(n=>({id:n.id,name:n.name,fraction:n.fraction,active:true})));
+  await sb.from("leaves").delete().neq("id","00000000-0000-0000-0000-000000000000");
+  if(leaves.length) await sb.from("leaves").insert(leaves.map(x=>({id:x.id,nurse_id:x.nurse_id,date_from:x.from,date_to:x.to,count_in_fund:x.count_fund})));
+  await sb.from("shift_requests").delete().neq("id","00000000-0000-0000-0000-000000000000");
+  if(requests.length) await sb.from("shift_requests").insert(requests.map(x=>({id:x.id,nurse_id:x.nurse_id,date:x.date,type:x.type,note:x.note})));
+  let arr=[];Object.entries(shifts).forEach(([date,ss])=>Object.entries(ss).forEach(([nid,type])=>arr.push({date,nurse_id:nid,shift_type:type})));
+  await sb.from("shifts").delete().gte("date","1900-01-01");if(arr.length)await sb.from("shifts").insert(arr);
+  await sb.from("months").upsert({month:monthKey,fund_hours:monthFund});
+  message("Uloženo do Supabase.","ok");
+ }catch(e){console.error(e);message("Supabase: "+esc(e.message||e),"err")}
+}
+async function loadSupabase(){
+ if(!sb)return;
+ try{
+  let a=await sb.from("nurses").select("*").eq("active",true).order("name");if(a.data?.length)nurses=a.data.map(x=>({id:x.id,name:x.name,fraction:+x.fraction}));
+  let l=await sb.from("leaves").select("*");if(l.data)leaves=l.data.map(x=>({id:x.id,nurse_id:x.nurse_id,from:x.date_from,to:x.date_to,count_fund:x.count_in_fund}));
+  let r=await sb.from("shift_requests").select("*");if(r.data)requests=r.data.map(x=>({id:x.id,nurse_id:x.nurse_id,date:x.date,type:x.type,note:x.note}));
+  let s=await sb.from("shifts").select("*");shifts={};(s.data||[]).filter(x=>x.date.startsWith(monthKey)).forEach(x=>(shifts[x.date]??={})[x.nurse_id]=x.shift_type);
+  renderNurses();renderReq();renderCalendar();renderStats();
+ }catch(e){console.warn(e)}
+}
+let local=localStorage.getItem("dialysisPlanner");if(local){try{let x=JSON.parse(local);nurses=x.nurses||nurses;leaves=x.leaves||[];requests=x.requests||[];shifts=x.shifts||{};settings=x.settings||settings}catch{}}
+$("dayHours").value=settings.dayHours;$("nightHours").value=settings.nightHours;$("halfNightHours").value=settings.halfNightHours;$("dayNeed").value=settings.dayNeed;$("nightNeed").value=settings.nightNeed;
+init();loadSupabase();
+</script>
+</body>
+</html>
