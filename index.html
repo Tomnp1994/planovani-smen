@@ -847,6 +847,7 @@ th{
     <li>Po návratu z dovolené se generátor snaží hned první den zajistit směnu.</li>
     <li>Směny se rozdělují podle úvazků, co nejspravedlivěji.</li>
     <li>Víkendové, denní i noční směny se snažíme rozdělit rovnoměrně mezi sestry.</li>
+    <li>Když sestra slouží víkend, je lepší, aby měla sobotní DEN i nedělní NOC stejného víkendu, než aby ho měly na půl dvě různé sestry.</li>
     <li>Pokud je měsíc personálně napjatý a vznikne přesčas, generátor se ho snaží
       po vygenerování ještě přerozdělit tak, aby ho nenesla jen jedna nebo dvě sestry.</li>
     <li>Měsíce na sebe navazují – poslední dny předchozího měsíce se počítají do kontroly (odpočinek, max. směn v řadě).</li>
@@ -1947,6 +1948,16 @@ function generatorScore(nurse,date,type,targets,randomize=false){
   // Víkendy se stále rozdělují co nejrovnoměrněji vzhledem k úvazku.
   score += Math.pow((weekendAfter-wTarget)/wTarget,2)*900;
 
+  // Když má sestra sloužit víkend, je lepší, aby měla sobotu i neděli
+  // stejného víkendu, než aby ho měly na půl dvě různé sestry.
+  // Sobota se přiděluje dřív než neděle, takže v okamžiku přidělování
+  // neděle už víme, kdo sloužil sobotu téhož víkendu.
+  if(getDayNumber(date)===0 && isNightType(type)){
+    const saturday=dateOffset(date,-1);
+    if(getShift(saturday,nurse.id))
+      score -= 400;
+  }
+
   if(randomize) score += Math.random()*0.15;
   return score;
 }
@@ -2045,6 +2056,22 @@ function scheduleFairnessScore(targets){
     // než malý rozdíl v počtu směn.
     score += Math.pow((st.weekends-t.weekends)/wn,2)*1200;
   });
+
+  // Bonus za "spojený" víkend – když sobotu i neděli stejného víkendu
+  // slouží stejná sestra, je to lepší než když je má rozdělený na dvě
+  // různé sestry. Toto ovlivňuje i pozdější optimalizaci/přerozdělení,
+  // aby je nerozbily.
+  Object.keys(shifts)
+    .filter(date=>isCurrentMonthDate(date) && getDayNumber(date)===0)
+    .forEach(sunday=>{
+      const saturday=dateOffset(sunday,-1);
+      const sundayRow=shifts[sunday]||{};
+      const saturdayRow=shifts[saturday]||{};
+      Object.keys(sundayRow).forEach(id=>{
+        if(saturdayRow[id]) score -= 150;
+      });
+    });
+
   return score;
 }
 
