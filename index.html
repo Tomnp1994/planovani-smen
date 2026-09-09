@@ -1709,7 +1709,7 @@ function generatorScore(nurse,date,type,targets,randomize=false){
   const nightAfter=st.night+(type==="N"?1:0);
   const weekendAfter=st.weekends+(isWeekend(date)?1:0);
 
-  const hTarget=Math.max(Number(t?.hours)||monthFund,12);
+  const hTarget=Math.max(Number(t?.planningHours)||Number(t?.hours)||monthFund,12);
   const cTarget=Math.max(Number(t?.count)||1,1);
   const dTarget=Math.max(Number(t?.day)||1,1);
   const nTarget=Math.max(Number(t?.night)||1,1);
@@ -1994,8 +1994,7 @@ function getGenerationTargets(){
   const [year,month]=monthKey.split("-").map(Number);
   const totalDays=daysInMonth(year,month);
 
-  for(let d=1;d<=totalDays;d++)
-    dates.push(dateStr(year,month,d));
+  for(let d=1;d<=totalDays;d++) dates.push(dateStr(year,month,d));
 
   let daySlots=0;
   let nightSlots=0;
@@ -2003,7 +2002,6 @@ function getGenerationTargets(){
 
   dates.forEach(date=>{
     const dow=getDayNumber(date);
-
     if(dow===0){
       nightSlots+=settings.nightNeed;
       weekendSlots+=settings.nightNeed;
@@ -2017,19 +2015,27 @@ function getGenerationTargets(){
   });
 
   const totalSlots=daySlots+nightSlots;
-  const avgShiftHours=(settings.dayHours+settings.nightHours)/2 || 12;
+  const requiredHours=daySlots*settings.dayHours + nightSlots*settings.nightHours;
+  const avgShiftHours=(requiredHours/Math.max(totalSlots,1)) || 12;
 
-  return nurses.map(n=>{
-    const fraction=Number(n.fraction)||1;
+  const baseTargets=nurses.map(n=>({
+    nurse:n,
+    targetHours:monthFund*(Number(n.fraction)||1)
+  }));
 
-    // Cíl hodin je přímo měsíční fond × úvazek.
-    // Např. 168 × 0,5 = 84 h.
-    const targetHours=monthFund*fraction;
-    const targetCount=targetHours/avgShiftHours;
+  const baseTotal=baseTargets.reduce((sum,x)=>sum+x.targetHours,0);
+  // Pokud je povinné obsazení vyšší než součet fondů, nutný přesčas
+  // rozdělíme poměrně podle úvazků. Nikdo tedy nebude automaticky
+  // "odměněn" většinou přebytečných směn jen proto, že je snadno dostupný.
+  const overloadFactor=Math.max(1,requiredHours/Math.max(baseTotal,1));
 
+  return baseTargets.map(x=>{
+    const planningHours=x.targetHours*overloadFactor;
+    const targetCount=planningHours/avgShiftHours;
     return {
-      nurse:n,
-      hours:targetHours,
+      nurse:x.nurse,
+      hours:x.targetHours,
+      planningHours,
       count:targetCount,
       day:targetCount*(daySlots/Math.max(totalSlots,1)),
       night:targetCount*(nightSlots/Math.max(totalSlots,1)),
@@ -2037,7 +2043,6 @@ function getGenerationTargets(){
     };
   });
 }
-
 /* =========================================================
    GLOBÁLNÍ OPTIMALIZACE SPRAVEDLNOSTI
    ========================================================= */
@@ -2048,7 +2053,7 @@ function scheduleFairnessScore(targets){
     const st=getNurseStats(nurse);
     const t=targets.find(x=>sameNurse(x.nurse.id,nurse.id));
     if(!t) return;
-    const hn=Math.max(t.hours,12), cn=Math.max(t.count,1);
+    const hn=Math.max(Number(t.planningHours)||t.hours,12), cn=Math.max(t.count,1);
     const dn=Math.max(t.day,1), nn=Math.max(t.night,1), wn=Math.max(t.weekends,1);
     score += Math.pow((st.hours-t.hours)/hn,2)*1000;
     score += Math.pow((st.count-t.count)/cn,2)*180;
@@ -2127,7 +2132,7 @@ function generate(randomize=false){
   const targets=getGenerationTargets();
 
   // Jen několik rychlých variant. Žádné dlouhé zamrzání prohlížeče.
-  const attempts=randomize?6:4;
+  const attempts=randomize?10:8;
   let best=null,bestScore=Infinity,bestWarnings=[];
 
   for(let attempt=0;attempt<attempts;attempt++){
@@ -2138,8 +2143,9 @@ function generate(randomize=false){
     // předchozím dnům. Přechod přes konec měsíce je zachován.
     dates.forEach(date=>{
       const dow=getDayNumber(date);
-      if(dow!==0) assignShift(date,"D",settings.dayNeed,warnings,targets,randomize);
-      if(dow!==6) assignShift(date,"N",settings.nightNeed,warnings,targets,randomize);
+      const useRandom=randomize || attempt>0;
+      if(dow!==0) assignShift(date,"D",settings.dayNeed,warnings,targets,useRandom);
+      if(dow!==6) assignShift(date,"N",settings.nightNeed,warnings,targets,useRandom);
     });
 
     const errors=validateSchedule();
@@ -2388,37 +2394,51 @@ function clickCalendarShift(date,nurseId,ev){
 function clickCalendarCell(date,nurseId){
   if(!selectedShift) return;
 
-  if(
-    selectedShift.date===date &&
-    String(selectedShift.nurseId)===String(nurseId)
-  ){
+  if(selectedShift.date===date && String(selectedShift.nurseId)===String(nurseId)){
     selectedShift=null;
     renderCalendar();
     return;
   }
 
   const targetShift=getShift(date,nurseId);
-
   if(targetShift){
-    setManualShift(
-      selectedShift.date,
-      selectedShift.nurseId,
-      date,
-      nurseId
-    );
+    setManualShift(selectedShift.date,selectedShift.nurseId,date,nurseId);
     return;
   }
 
-  // Při přesunu na prázdné políčko by vznikl neobsazený počet lidí
-  // na původní směně. Proto je bezpečná ruční změna standardně výměna.
+  // Prázdné políčko ve STEJNÉM dni je bezpečný přesun mezi sestrami:
+  // počet lidí na směně se nezmění.
+  if(selectedShift.date===date){
+    const sourceDate=selectedShift.date;
+    const sourceNurseId=selectedShift.nurseId;
+    const sourceType=getShift(sourceDate,sourceNurseId);
+    if(sourceType){
+      const candidate=cloneShifts();
+      if(!candidate[date]) candidate[date]={};
+      delete candidate[date][sourceNurseId];
+      candidate[date][nurseId]=sourceType;
+      const errors=validateManualChange(candidate);
+      if(!errors.length){
+        shifts=candidate;
+        selectedShift=null;
+        renderCalendar();
+        renderStats();
+        cacheLocal();
+        if(sb) saveAll();
+        message(`<b>Směna přesunuta.</b><br>${sourceType==='D'?'DEN':'NOC'} byl převeden na jinou sestru. Statistiky byly přepočítány.`,"ok");
+        return;
+      }
+      message(`<b>Směnu nelze přesunout.</b><br>${esc(errors.slice(0,3).join(" · "))}`,"err");
+      return;
+    }
+  }
+
   message(
-    "<b>Na prázdné políčko směnu nelze přímo přesunout.</b><br>"+
-    "Aby zůstal zachovaný počet 3 DEN / 2 NOC, klikni na směnu jiné sestry "+
-    "a směny se prohodí.",
+    "<b>Na prázdné políčko v jiném dni směnu zatím nelze bezpečně přesunout.</b><br>"+
+    "V jiném dni klikni na směnu jiné sestry – směny se prohodí. Ve stejném dni lze směnu přesunout i na volnou sestru.",
     "err"
   );
 }
-
 /* =========================================================
    KALENDÁŘ
    ========================================================= */
