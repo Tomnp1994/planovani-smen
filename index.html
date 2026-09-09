@@ -221,30 +221,111 @@ function renderStats(){
  $("statsBox").innerHTML=`<div class=stat><span>Sestry</span><b>${nurses.length}</b></div><div class=stat><span>Směny</span><b>${totals.reduce((a,x)=>a+x.day+x.night,0)}</b></div><div class=stat><span>Denní</span><b>${totals.reduce((a,x)=>a+x.day,0)}</b></div><div class=stat><span>Noční</span><b>${totals.reduce((a,x)=>a+x.night,0)}</b></div><div class=stat><span>Víkendové</span><b>${totals.reduce((a,x)=>a+x.w,0)}</b></div><div class=stat><span>Průměr hodin</span><b>${avg.toFixed(1)}</b></div>`;
 }
 function clearMonth(){if(confirm("Vymazat směny tohoto měsíce?")){shifts={};renderCalendar();renderStats()}}
+function cacheLocal(){
+  localStorage.setItem("dialysisPlanner",JSON.stringify({nurses,leaves,requests,shifts,settings,monthKey,monthFund}));
+}
+function checkDb(res,label){
+  if(res.error) throw new Error(label+": "+res.error.message);
+  return res.data;
+}
 async function saveAll(){
- if(!sb){localStorage.setItem("dialysisPlanner",JSON.stringify({nurses,leaves,requests,shifts,settings,monthKey,monthFund}));return message("Uloženo lokálně. Pro Supabase doplň klíče v HTML.","ok")}
- try{
-  // Requires tables from the supplied SQL setup.
-  await sb.from("nurses").upsert(nurses.map(n=>({id:n.id,name:n.name,fraction:n.fraction,active:true})));
-  await sb.from("leaves").delete().neq("id","00000000-0000-0000-0000-000000000000");
-  if(leaves.length) await sb.from("leaves").insert(leaves.map(x=>({id:x.id,nurse_id:x.nurse_id,date_from:x.from,date_to:x.to,count_in_fund:x.count_fund})));
-  await sb.from("shift_requests").delete().neq("id","00000000-0000-0000-0000-000000000000");
-  if(requests.length) await sb.from("shift_requests").insert(requests.map(x=>({id:x.id,nurse_id:x.nurse_id,date:x.date,type:x.type,note:x.note})));
-  let arr=[];Object.entries(shifts).forEach(([date,ss])=>Object.entries(ss).forEach(([nid,type])=>arr.push({date,nurse_id:nid,shift_type:type})));
-  await sb.from("shifts").delete().gte("date","1900-01-01");if(arr.length)await sb.from("shifts").insert(arr);
-  await sb.from("months").upsert({month:monthKey,fund_hours:monthFund});
-  message("Uloženo do Supabase.","ok");
- }catch(e){console.error(e);message("Supabase: "+esc(e.message||e),"err")}
+  cacheLocal();
+  if(!sb) return message("Uloženo lokálně. Pro Supabase doplň klíče v HTML.","ok");
+  try{
+    // Nurses
+    let r=await sb.from("nurses").upsert(
+      nurses.map(n=>({id:n.id,name:n.name,fraction:n.fraction,active:true})),
+      {onConflict:"id"}
+    );
+    checkDb(r,"Sestry");
+
+    // Remove nurses deleted from the app, but only inactive rows are kept out of the active list.
+    // Existing DB rows not represented in the app are marked inactive.
+    let dbN=await sb.from("nurses").select("id");
+    checkDb(dbN,"Načtení sester");
+    let keep=new Set(nurses.map(n=>n.id));
+    let removed=(dbN.data||[]).map(x=>x.id).filter(id=>!keep.has(id));
+    if(removed.length){
+      let rr=await sb.from("nurses").update({active:false}).in("id",removed);
+      checkDb(rr,"Deaktivace sester");
+    }
+
+    // Leaves
+    let dl=await sb.from("leaves").delete().neq("id","00000000-0000-0000-0000-000000000000");
+    checkDb(dl,"Mazání dovolených");
+    if(leaves.length){
+      let il=await sb.from("leaves").insert(leaves.map(x=>({
+        id:x.id,nurse_id:x.nurse_id,date_from:x.from,date_to:x.to,count_in_fund:x.count_fund
+      })));
+      checkDb(il,"Uložení dovolených");
+    }
+
+    // Requests
+    let dr=await sb.from("shift_requests").delete().neq("id","00000000-0000-0000-0000-000000000000");
+    checkDb(dr,"Mazání požadavků");
+    if(requests.length){
+      let ir=await sb.from("shift_requests").insert(requests.map(x=>({
+        id:x.id,nurse_id:x.nurse_id,date:x.date,type:x.type,note:x.note
+      })));
+      checkDb(ir,"Uložení požadavků");
+    }
+
+    // Shifts
+    let ds=await sb.from("shifts").delete().gte("date","1900-01-01");
+    checkDb(ds,"Mazání směn");
+    let arr=[];
+    Object.entries(shifts).forEach(([date,ss])=>{
+      Object.entries(ss).forEach(([nid,type])=>arr.push({date,nurse_id:nid,shift_type:type}));
+    });
+    if(arr.length){
+      let is=await sb.from("shifts").insert(arr);
+      checkDb(is,"Uložení směn");
+    }
+
+    let im=await sb.from("months").upsert({month:monthKey,fund_hours:monthFund},{onConflict:"month"});
+    checkDb(im,"Uložení měsíce");
+
+    // Verify the nurses really exist in the database before claiming success.
+    let verify=await sb.from("nurses").select("id,name,fraction").eq("active",true).order("name");
+    checkDb(verify,"Ověření uložení");
+    if((verify.data||[]).length===0) throw new Error("Supabase nevrátil žádnou aktivní sestru po uložení.");
+    message(`Uloženo do Supabase. Aktivních sester: ${verify.data.length}.`,"ok");
+  }catch(e){
+    console.error(e);
+    message("Uložení do Supabase selhalo: "+esc(e.message||e)+". Lokální záloha byla uložena v tomto prohlížeči.","err");
+  }
 }
 async function loadSupabase(){
- if(!sb)return;
- try{
-  let a=await sb.from("nurses").select("*").eq("active",true).order("name");if(a.data?.length)nurses=a.data.map(x=>({id:x.id,name:x.name,fraction:+x.fraction}));
-  let l=await sb.from("leaves").select("*");if(l.data)leaves=l.data.map(x=>({id:x.id,nurse_id:x.nurse_id,from:x.date_from,to:x.date_to,count_fund:x.count_in_fund}));
-  let r=await sb.from("shift_requests").select("*");if(r.data)requests=r.data.map(x=>({id:x.id,nurse_id:x.nurse_id,date:x.date,type:x.type,note:x.note}));
-  let s=await sb.from("shifts").select("*");shifts={};(s.data||[]).filter(x=>x.date.startsWith(monthKey)).forEach(x=>(shifts[x.date]??={})[x.nurse_id]=x.shift_type);
-  renderNurses();renderReq();renderCalendar();renderStats();
- }catch(e){console.warn(e)}
+  if(!sb)return;
+  try{
+    let a=await sb.from("nurses").select("*").eq("active",true).order("name");
+    checkDb(a,"Načtení sester");
+    if(a.data?.length) nurses=a.data.map(x=>({id:x.id,name:x.name,fraction:+x.fraction}));
+    else if(nurses.length===0){
+      nurses=Array.from({length:9},(_,i)=>({id:uid(),name:`Sestra ${i+1}`,fraction:1}));
+      message("V Supabase nejsou žádné aktivní sestry. Vytvořeno 9 výchozích sester – klikni Uložit.","err");
+    }
+
+    let l=await sb.from("leaves").select("*");checkDb(l,"Načtení dovolených");
+    if(l.data)leaves=l.data.map(x=>({id:x.id,nurse_id:x.nurse_id,from:x.date_from,to:x.date_to,count_fund:x.count_in_fund}));
+
+    let r=await sb.from("shift_requests").select("*");checkDb(r,"Načtení požadavků");
+    if(r.data)requests=r.data.map(x=>({id:x.id,nurse_id:x.nurse_id,date:x.date,type:x.type,note:x.note}));
+
+    let s=await sb.from("shifts").select("*");checkDb(s,"Načtení směn");
+    shifts={};
+    (s.data||[]).filter(x=>x.date.startsWith(monthKey)).forEach(x=>(shifts[x.date]??={})[x.nurse_id]=x.shift_type);
+
+    let mo=await sb.from("months").select("*").eq("month",monthKey).maybeSingle();
+    checkDb(mo,"Načtení měsíce");
+    if(mo.data){monthFund=+mo.data.fund_hours;$("fund").value=monthFund}
+
+    cacheLocal();
+    renderNurses();renderReq();renderCalendar();renderStats();
+  }catch(e){
+    console.error(e);
+    message("Supabase se nepodařilo načíst: "+esc(e.message||e)+". Zkontroluj Data API/RLS.","err");
+  }
 }
 let local=localStorage.getItem("dialysisPlanner");if(local){try{let x=JSON.parse(local);nurses=x.nurses||nurses;leaves=x.leaves||[];requests=x.requests||[];shifts=x.shifts||{};settings=x.settings||settings}catch{}}
 $("dayHours").value=settings.dayHours;$("nightHours").value=settings.nightHours;$("halfNightHours").value=settings.halfNightHours;$("dayNeed").value=settings.dayNeed;$("nightNeed").value=settings.nightNeed;
