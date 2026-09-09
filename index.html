@@ -169,6 +169,12 @@ th{
   color:#5b21b6
 }
 
+.N2{
+  background:#f3e8ff;
+  color:#7e22ce;
+  border:1px dashed #c084fc
+}
+
 .V{
   background:#dcfce7;
   color:#166534
@@ -302,10 +308,27 @@ th{
 .shift-draggable{
   cursor:grab;
   user-select:none;
+  position:relative;
 }
 
 .shift-draggable:active{
   cursor:grabbing;
+}
+
+.half-toggle{
+  border:none;
+  background:rgba(255,255,255,.55);
+  color:inherit;
+  border-radius:50%;
+  width:14px;
+  height:14px;
+  line-height:12px;
+  font-size:9px;
+  font-weight:800;
+  padding:0;
+  margin-left:4px;
+  cursor:pointer;
+  vertical-align:middle;
 }
 
 .calendar-cell-editable.drop-target{
@@ -361,6 +384,10 @@ th{
   .calendar-table th:first-child,
   .calendar-table td:first-child{
     position:static
+  }
+
+  .half-toggle{
+    display:none
   }
 }
 </style>
@@ -458,7 +485,7 @@ th{
       </button>
 
       <button onclick="clearMonth()">
-        Vymazat směny
+        Vymazat směny tohoto měsíce
       </button>
     </div>
 
@@ -469,13 +496,18 @@ th{
 
 <div class="card print-card">
 
-  <h2>Kalendář směn</h2>
+  <h2>
+    Kalendář směn
+    <span class="small" id="printMonthTitle"></span>
+  </h2>
 
   <div class="legend">
 
     <span class="badge D">DEN</span>
 
     <span class="badge N">NOC</span>
+
+    <span class="badge N2">NOC do 24h</span>
 
     <span class="badge V">DOV</span>
 
@@ -487,15 +519,21 @@ th{
 
   </div>
 
-  <div class="small" style="margin-bottom:12px">
+  <div class="small no-print" style="margin-bottom:12px">
     Požadavky a dovolené zůstávají v kalendáři viditelné
     i po vygenerování směn. Směnu můžeš <b>přetáhnout myší</b> na jiné políčko,
     případně na směnu kliknout a potom kliknout na cílové políčko.
+    U noční směny přepneš tlačítkem <b>½</b> na "pouze do půlnoci".
     Po každé změně se okamžitě přepočítají statistiky a kontrolují pravidla.
   </div>
 
   <div id="calendar" class="scroll"></div>
 
+</div>
+
+<div class="card print-card print-only">
+  <h2>Statistiky měsíce</h2>
+  <div id="statsRowsPrintWrap"></div>
 </div>
 
 </section>
@@ -565,6 +603,13 @@ th{
 
   <h2>Dovolená</h2>
 
+  <p class="small">
+    Dny dovolené blokují směnu a zároveň se počítají do fondu hodin,
+    jako by sestra v ten den odpracovala <span id="leaveCreditHint"></span> h
+    (nastavitelné v Nastavení). Díky tomu jí po návratu z dovolené
+    nepřibudou navíc směny, které by měly „dohnat“ fond.
+  </p>
+
   <div class="grid">
 
     <div>
@@ -589,15 +634,6 @@ th{
         id="leaveTo"
         type="date"
       >
-    </div>
-
-    <div>
-      <label>Započítat dovolenou do fondu</label>
-
-      <select id="leaveFund">
-        <option value="1">Ano</option>
-        <option value="0">Ne</option>
-      </select>
     </div>
 
   </div>
@@ -715,18 +751,18 @@ th{
 
   <div class="scroll">
 
-    <table>
+    <table id="statsTable">
 
       <thead>
 
         <tr>
           <th class="left">Sestra</th>
-          <th>Hodiny</th>
+          <th>Hodiny (vč. dovolené)</th>
           <th>Směny</th>
           <th>DEN</th>
           <th>NOC</th>
           <th>Víkendy</th>
-          <th>Dovolená</th>
+          <th>Dovolená (dny)</th>
           <th>Cíl hodin</th>
           <th>Rozdíl</th>
         </tr>
@@ -763,6 +799,7 @@ th{
         id="dayHours"
         type="number"
         value="12"
+        onchange="applySettingsPreview()"
       >
     </div>
 
@@ -773,16 +810,30 @@ th{
         id="nightHours"
         type="number"
         value="12"
+        onchange="applySettingsPreview()"
       >
     </div>
 
     <div>
-      <label>Noční do půlnoci – hodiny</label>
+      <label>Noční „jen do půlnoci“ – hodiny</label>
 
       <input
         id="halfNightHours"
         type="number"
         value="6"
+        onchange="applySettingsPreview()"
+      >
+    </div>
+
+    <div>
+      <label>Dovolená – kredit hodin/den do fondu</label>
+
+      <input
+        id="leaveHoursPerDay"
+        type="number"
+        step="0.5"
+        value="7.5"
+        onchange="applySettingsPreview()"
       >
     </div>
 
@@ -793,6 +844,7 @@ th{
         id="dayNeed"
         type="number"
         value="3"
+        onchange="applySettingsPreview()"
       >
     </div>
 
@@ -803,15 +855,16 @@ th{
         id="nightNeed"
         type="number"
         value="2"
+        onchange="applySettingsPreview()"
       >
     </div>
 
   </div>
 
+  <p class="small" id="settingsSummary"></p>
   <p class="small">
-    Pondělí až pátek: 3 DEN + 2 NOC.
-    Sobota: 3 DEN.
-    Neděle: 2 NOC.
+    Pravidlo je vždy pevné: sobota jen DEN, neděle jen NOC, po noční směně
+    nikdy nenásleduje denní, nejvýše 2 směny v řadě.
   </p>
 
 </div>
@@ -822,15 +875,16 @@ th{
   <h2>Pravidla generátoru</h2>
 
   <ul>
-    <li>Nejvýše 2 směny za sebou.</li>
-    <li>Po noční nesmí následující den na denní.</li>
-    <li>Dovolená blokuje směnu.</li>
+    <li>Nejvýše 2 směny za sebou (3. za sebou je vždy zakázaná).</li>
+    <li>Po noční (i „do půlnoci“) nesmí následující den na denní.</li>
+    <li>Dovolená blokuje směnu a počítá se do fondu hodin.</li>
     <li>Požadavek „nemůže pracovat“ blokuje směnu.</li>
-    <li>„Nemůže DEN“ blokuje pouze DEN.</li>
-    <li>„Nemůže NOC“ blokuje pouze NOC.</li>
+    <li>„Nemůže DEN“ blokuje pouze DEN, „Nemůže NOC“ blokuje pouze NOC.</li>
     <li>Preference ovlivňuje výběr, ale není povinná.</li>
-    <li>Směny se rozdělují podle úvazků.</li>
-    <li>Víkendové směny se také snažíme rozdělit rovnoměrně.</li>
+    <li>Sobota je vždy jen DEN, neděle je vždy jen NOC.</li>
+    <li>Směny se rozdělují podle úvazků, co nejspravedlivěji.</li>
+    <li>Víkendové, denní i noční směny se snažíme rozdělit rovnoměrně mezi sestry.</li>
+    <li>Měsíce na sebe navazují – poslední dny předchozího měsíce se počítají do kontroly (odpočinek, max. směn v řadě).</li>
   </ul>
 
 </div>
@@ -870,6 +924,10 @@ const sb =
 let nurses = [];
 let leaves = [];
 let requests = [];
+
+// shifts holds EVERY loaded month at once ({date: {nurseId: "D"|"N"|"Nh"}}).
+// This is required so that the last days of the previous month remain
+// available when generating/validating the current month (continuity rule).
 let shifts = {};
 
 let monthKey = "";
@@ -879,6 +937,7 @@ let settings = {
   dayHours:12,
   nightHours:12,
   halfNightHours:6,
+  leaveHoursPerDay:7.5,
   dayNeed:3,
   nightNeed:2
 };
@@ -984,6 +1043,29 @@ function normDate(value){
 
 function sameNurse(a,b){
   return String(a ?? "").trim() === String(b ?? "").trim();
+}
+
+// A shift cell can hold "D" (day), "N" (full night) or "Nh" (night, only
+// until midnight). These two small helpers are used everywhere instead of
+// comparing strings directly, so the "half night" idea only has to be
+// understood in one place.
+function isNightType(type){
+  return type==="N" || type==="Nh";
+}
+function isDayType(type){
+  return type==="D";
+}
+function hoursForType(type){
+  if(type==="D") return settings.dayHours;
+  if(type==="Nh") return settings.halfNightHours;
+  if(type==="N") return settings.nightHours;
+  return 0;
+}
+function shiftLabel(type){
+  if(type==="D") return "DEN";
+  if(type==="Nh") return "NOC do 24h";
+  if(type==="N") return "NOC";
+  return "";
 }
 
 function isLeave(nurseId,date){
@@ -1290,10 +1372,7 @@ function addLeave(){
 
     from,
 
-    to,
-
-    count_fund:
-      $("leaveFund").value==="1"
+    to
 
   });
 
@@ -1435,6 +1514,7 @@ function renderReq(){
 
   fillSelects();
 
+  $("leaveCreditHint").textContent = settings.leaveHoursPerDay;
 
   $("leaveList").innerHTML=
     leaves.length
@@ -1458,11 +1538,6 @@ function renderReq(){
 
               · ${x.from}
               – ${x.to}
-
-              · fond:
-              ${x.count_fund
-                ? "ano"
-                : "ne"}
 
               <button
                 class="danger"
@@ -1557,199 +1632,163 @@ function loadMonth(){
 
 
 /* =========================================================
-   KONTROLA SMĚNY
+   NASTAVENÍ – přepočet a shrnutí
    ========================================================= */
 
-function shiftAllowed(
-  nurse,
-  date,
-  type
-){
+function readSettingsFromForm(){
+  settings.dayHours=Number($("dayHours").value)||12;
+  settings.nightHours=Number($("nightHours").value)||12;
+  settings.halfNightHours=Number($("halfNightHours").value)||6;
+  settings.leaveHoursPerDay=Number($("leaveHoursPerDay").value)||0;
+  settings.dayNeed=Number($("dayNeed").value)||1;
+  settings.nightNeed=Number($("nightNeed").value)||1;
+}
 
-  /*
-   * DOVOLENÁ
-   */
+function applySettingsPreview(){
+  readSettingsFromForm();
+  renderCalendar();
+  renderStats();
+  renderSettingsSummary();
+  cacheLocal();
+}
 
-  if(isLeave(nurse.id,date))
-    return false;
-
-
-  /*
-   * POŽADAVKY
-   */
-
-  const rr=
-    getRequests(
-      nurse.id,
-      date
-    );
-
-
-  if(
-    rr.some(
-      x=>x.type==="off"
-    )
-  )
-    return false;
-
-
-  if(
-    type==="D" &&
-    rr.some(
-      x=>x.type==="day"
-    )
-  )
-    return false;
-
-
-  if(
-    type==="N" &&
-    rr.some(
-      x=>x.type==="night"
-    )
-  )
-    return false;
-
-
-  /*
-   * Jedna směna za den.
-   */
-
-  if(
-    getShift(
-      date,
-      nurse.id
-    )
-  )
-    return false;
-
-
-  /*
-   * DEN po NOCI není povolen.
-   */
-
-  const current=
-    new Date(
-      date+"T12:00:00"
-    );
-
-  const previous=
-    new Date(current);
-
-  previous.setDate(
-    previous.getDate()-1
-  );
-
-  const previousDate=
-    previous
-      .toISOString()
-      .slice(0,10);
-
-
-  if(
-    type==="D" &&
-    getShift(
-      previousDate,
-      nurse.id
-    )==="N"
-  )
-    return false;
-
-
-  /*
-   * Max 2 směny za sebou.
-   */
-
-  const d1=
-    new Date(current);
-
-  d1.setDate(
-    d1.getDate()-1
-  );
-
-  const d2=
-    new Date(current);
-
-  d2.setDate(
-    d2.getDate()-2
-  );
-
-
-  const s1=
-    getShift(
-      d1.toISOString().slice(0,10),
-      nurse.id
-    );
-
-  const s2=
-    getShift(
-      d2.toISOString().slice(0,10),
-      nurse.id
-    );
-
-
-  if(s1 && s2)
-    return false;
-
-
-  return true;
-
+function renderSettingsSummary(){
+  const el=$("settingsSummary");
+  if(!el) return;
+  el.innerHTML =
+    `Po–pá: <b>${settings.dayNeed}× DEN</b> (${settings.dayHours} h) + `+
+    `<b>${settings.nightNeed}× NOC</b> (${settings.nightHours} h, případně do půlnoci `+
+    `${settings.halfNightHours} h). Sobota: <b>${settings.dayNeed}× DEN</b>. `+
+    `Neděle: <b>${settings.nightNeed}× NOC</b>.`;
 }
 
 
 /* =========================================================
-   PŘIDĚLENÍ SMĚNY – RYCHLÝ A PEVNÝ GENERÁTOR
+   TVRDÁ PRAVIDLA
    ========================================================= */
 
-function generatorScore(nurse,date,type,targets,randomize=false){
-  const st=getNurseStats(nurse);
-  const t=targets.find(x=>sameNurse(x.nurse.id,nurse.id));
-  const hoursAfter=st.hours+(type==="D"?settings.dayHours:settings.nightHours);
-  const dayAfter=st.day+(type==="D"?1:0);
-  const nightAfter=st.night+(type==="N"?1:0);
-  const weekendAfter=st.weekends+(isWeekend(date)?1:0);
-
-  const hTarget=Math.max(Number(t?.planningHours)||Number(t?.hours)||monthFund,12);
-  const cTarget=Math.max(Number(t?.count)||1,1);
-  const dTarget=Math.max(Number(t?.day)||1,1);
-  const nTarget=Math.max(Number(t?.night)||1,1);
-  const wTarget=Math.max(Number(t?.weekends)||1,1);
-
-  let score=0;
-
-  // Fond hodin je hlavní kritérium. U úvazku 0,5 je při fondu 168 h
-  // cílem 84 h. Po dosažení cíle je další směna výrazně penalizována.
-  const beforeRatio=st.hours/hTarget;
-  const afterRatio=hoursAfter/hTarget;
-  score += Math.pow(afterRatio-1,2)*3000;
-  if(afterRatio>1) score += (afterRatio-1)*1800;
-  if(beforeRatio<1 && afterRatio<=1) score -= (1-afterRatio)*220;
-
-  // Počet směn je podpůrné kritérium – hodiny mají přednost.
-  score += Math.pow((st.count+1-cTarget)/cTarget,2)*180;
-  score += Math.pow((dayAfter-dTarget)/dTarget,2)*100;
-  score += Math.pow((nightAfter-nTarget)/nTarget,2)*100;
-
-  // Víkendy se stále rozdělují co nejrovnoměrněji vzhledem k úvazku.
-  score += Math.pow((weekendAfter-wTarget)/wTarget,2)*900;
-
-  if(randomize) score += Math.random()*0.15;
-  return score;
+function dateOffset(date,days){
+  const d=new Date(date+"T12:00:00");
+  d.setDate(d.getDate()+days);
+  return d.toISOString().slice(0,10);
 }
 
-function assignShift(date,type,needed,warnings,targets,randomize=false){
-  if(!shifts[date]) shifts[date]={};
+function isCurrentMonthDate(date){
+  return !monthKey || normDate(date).startsWith(monthKey);
+}
 
-  const candidates=nurses.filter(n=>shiftAllowed(n,date,type));
-  candidates.sort((a,b)=>generatorScore(a,date,type,targets,randomize)-generatorScore(b,date,type,targets,randomize));
+/*
+ * Tvrdá kontrola pro generátor / ruční přesuny:
+ * - dovolená / VOLNO / omezení
+ * - pouze jedna směna za den
+ * - po NOC (i "do půlnoci") nesmí následovat DEN
+ * - nikdy 3 směny za sebou (i napříč hranicí měsíce)
+ */
+function shiftAllowed(nurse,date,type){
 
-  const selected=candidates.slice(0,needed);
-  selected.forEach(n=>{ shifts[date][n.id]=type; });
+  if(isLeave(nurse.id,date))
+    return false;
 
-  if(selected.length<needed){
-    warnings.push(`${date}: ${type==="D"?"DEN":"NOC"} – ${selected.length}/${needed}`);
+  const rr=getRequests(nurse.id,date);
+
+  if(rr.some(x=>x.type==="off"))
+    return false;
+
+  if(type==="D" && rr.some(x=>x.type==="day"))
+    return false;
+
+  if(isNightType(type) && rr.some(x=>x.type==="night"))
+    return false;
+
+  if(getShift(date,nurse.id))
+    return false;
+
+  const previousDate=dateOffset(date,-1);
+  const twoDaysAgo=dateOffset(date,-2);
+  const previousType=getShift(previousDate,nurse.id);
+
+  /*
+   * Po noční (i do půlnoci) není následující den DEN.
+   */
+  if(type==="D" && isNightType(previousType))
+    return false;
+
+  /*
+   * Absolutní zákaz 3 směn v řadě (počítá se i přes hranici měsíce).
+   */
+  if(previousType && getShift(twoDaysAgo,nurse.id))
+    return false;
+
+  return true;
+}
+
+
+/* =========================================================
+   STATISTIKY PRO GENERÁTOR
+   ========================================================= */
+
+// Vrací i kredit hodin za dovolenou (počítá se, jako by sestra ten den
+// pracovala - viz požadavek "do fondu se počítá i dovolená").
+function getNurseStats(nurse){
+
+  let hours=0;
+  let count=0;
+  let day=0;
+  let night=0;
+  let weekends=0;
+  let leaveDays=0;
+  let leaveCreditHours=0;
+
+  Object.entries(shifts).forEach(
+    ([date,ss])=>{
+
+      if(!isCurrentMonthDate(date))
+        return;
+
+      const type=ss?.[nurse.id];
+
+      if(!type)
+        return;
+
+      count++;
+
+      if(type==="D"){
+        day++;
+      }else{
+        night++;
+      }
+
+      hours += hoursForType(type);
+
+      if(isWeekend(date))
+        weekends++;
+    }
+  );
+
+  if(monthKey){
+    const [year,month]=monthKey.split("-").map(Number);
+    const totalDays=daysInMonth(year,month);
+    for(let d=1;d<=totalDays;d++){
+      const date=dateStr(year,month,d);
+      if(isLeave(nurse.id,date)){
+        leaveDays++;
+        leaveCreditHours += settings.leaveHoursPerDay;
+      }
+    }
   }
+
+  return {
+    hours: hours + leaveCreditHours,
+    workedHours: hours,
+    leaveCreditHours,
+    count,
+    day,
+    night,
+    weekends,
+    leaveDays
+  };
 }
+
 
 /* =========================================================
    KONTROLA CELÉHO PLÁNU
@@ -1786,13 +1825,13 @@ function validateSchedule(){
         errors.push(`${nurse.name}: směna ve VOLNU ${date}`);
       if(inMonth && type==="D" && rr.some(x=>x.type==="day"))
         errors.push(`${nurse.name}: DEN v omezení ${date}`);
-      if(inMonth && type==="N" && rr.some(x=>x.type==="night"))
+      if(inMonth && isNightType(type) && rr.some(x=>x.type==="night"))
         errors.push(`${nurse.name}: NOC v omezení ${date}`);
 
       run++;
       if(inMonth && run>=3)
         errors.push(`${nurse.name}: 3 směny za sebou (${date})`);
-      if(inMonth && previousType==="N" && type==="D")
+      if(inMonth && isNightType(previousType) && type==="D")
         errors.push(`${nurse.name}: DEN po NOCI (${date})`);
 
       previousType=type;
@@ -1810,177 +1849,6 @@ function validateSchedule(){
   }
 
   return [...new Set(errors)];
-}
-
-/* =========================================================
-   STATISTIKY PRO GENERÁTOR
-   ========================================================= */
-
-function getNurseStats(nurse){
-
-  let hours=0;
-  let count=0;
-  let day=0;
-  let night=0;
-  let weekends=0;
-
-
-  Object.entries(shifts)
-    .forEach(
-      ([date,ss])=>{
-
-        const type=
-          ss?.[nurse.id];
-
-        if(!type)
-          return;
-
-
-        count++;
-
-
-        if(type==="D"){
-
-          day++;
-
-          hours+=
-            settings.dayHours;
-
-        }else{
-
-          night++;
-
-          hours+=
-            settings.nightHours;
-
-        }
-
-
-        if(
-          isWeekend(date)
-        )
-          weekends++;
-
-      }
-    );
-
-
-  return {
-    hours,
-    count,
-    day,
-    night,
-    weekends
-  };
-
-}
-
-
-/* =========================================================
-   TVRDÁ PRAVIDLA + SPRAVEDLNOST
-   ========================================================= */
-
-function dateOffset(date,days){
-  const d=new Date(date+"T12:00:00");
-  d.setDate(d.getDate()+days);
-  return d.toISOString().slice(0,10);
-}
-
-function isCurrentMonthDate(date){
-  return !monthKey || normDate(date).startsWith(monthKey);
-}
-
-
-/*
- * Tvrdá kontrola:
- * - dovolená / VOLNO / omezení
- * - pouze jedna směna za den
- * - po NOC nesmí DEN
- * - nikdy 3 směny za sebou
- */
-function shiftAllowed(nurse,date,type){
-
-  if(isLeave(nurse.id,date))
-    return false;
-
-  const rr=getRequests(nurse.id,date);
-
-  if(rr.some(x=>x.type==="off"))
-    return false;
-
-  if(type==="D" && rr.some(x=>x.type==="day"))
-    return false;
-
-  if(type==="N" && rr.some(x=>x.type==="night"))
-    return false;
-
-  if(getShift(date,nurse.id))
-    return false;
-
-  const previousDate=dateOffset(date,-1);
-  const twoDaysAgo=dateOffset(date,-2);
-
-  /*
-   * Po noční není následující den DEN.
-   */
-  if(
-    type==="D" &&
-    getShift(previousDate,nurse.id)==="N"
-  )
-    return false;
-
-  /*
-   * Absolutní zákaz 3 směn v řadě.
-   */
-  if(
-    getShift(previousDate,nurse.id) &&
-    getShift(twoDaysAgo,nurse.id)
-  )
-    return false;
-
-  return true;
-}
-
-
-/* =========================================================
-   STATISTIKY PRO GENERÁTOR
-   ========================================================= */
-
-function getNurseStats(nurse){
-
-  let hours=0;
-  let count=0;
-  let day=0;
-  let night=0;
-  let weekends=0;
-
-  Object.entries(shifts).forEach(
-    ([date,ss])=>{
-
-      if(!isCurrentMonthDate(date))
-        return;
-
-      const type=ss?.[nurse.id];
-
-      if(!type)
-        return;
-
-      count++;
-
-      if(type==="D"){
-        day++;
-        hours+=settings.dayHours;
-      }else{
-        night++;
-        hours+=settings.nightHours;
-      }
-
-      if(isWeekend(date))
-        weekends++;
-    }
-  );
-
-  return {hours,count,day,night,weekends};
 }
 
 
@@ -2043,6 +1911,62 @@ function getGenerationTargets(){
     };
   });
 }
+
+
+/* =========================================================
+   PŘIDĚLENÍ SMĚNY – GENERÁTOR
+   ========================================================= */
+
+function generatorScore(nurse,date,type,targets,randomize=false){
+  const st=getNurseStats(nurse);
+  const t=targets.find(x=>sameNurse(x.nurse.id,nurse.id));
+  const hoursAfter=st.hours+hoursForType(type);
+  const dayAfter=st.day+(type==="D"?1:0);
+  const nightAfter=st.night+(isNightType(type)?1:0);
+  const weekendAfter=st.weekends+(isWeekend(date)?1:0);
+
+  const hTarget=Math.max(Number(t?.planningHours)||Number(t?.hours)||monthFund,12);
+  const cTarget=Math.max(Number(t?.count)||1,1);
+  const dTarget=Math.max(Number(t?.day)||1,1);
+  const nTarget=Math.max(Number(t?.night)||1,1);
+  const wTarget=Math.max(Number(t?.weekends)||1,1);
+
+  let score=0;
+
+  // Fond hodin (včetně kreditu za dovolenou) je hlavní kritérium.
+  const beforeRatio=st.hours/hTarget;
+  const afterRatio=hoursAfter/hTarget;
+  score += Math.pow(afterRatio-1,2)*3000;
+  if(afterRatio>1) score += (afterRatio-1)*1800;
+  if(beforeRatio<1 && afterRatio<=1) score -= (1-afterRatio)*220;
+
+  // Počet směn je podpůrné kritérium – hodiny mají přednost.
+  score += Math.pow((st.count+1-cTarget)/cTarget,2)*180;
+  score += Math.pow((dayAfter-dTarget)/dTarget,2)*100;
+  score += Math.pow((nightAfter-nTarget)/nTarget,2)*100;
+
+  // Víkendy se stále rozdělují co nejrovnoměrněji vzhledem k úvazku.
+  score += Math.pow((weekendAfter-wTarget)/wTarget,2)*900;
+
+  if(randomize) score += Math.random()*0.15;
+  return score;
+}
+
+function assignShift(date,type,needed,warnings,targets,randomize=false){
+  if(!shifts[date]) shifts[date]={};
+
+  const candidates=nurses.filter(n=>shiftAllowed(n,date,type));
+  candidates.sort((a,b)=>generatorScore(a,date,type,targets,randomize)-generatorScore(b,date,type,targets,randomize));
+
+  const selected=candidates.slice(0,needed);
+  selected.forEach(n=>{ shifts[date][n.id]=type; });
+
+  if(selected.length<needed){
+    warnings.push(`${date}: ${shiftLabel(type)} – ${selected.length}/${needed}`);
+  }
+}
+
+
 /* =========================================================
    GLOBÁLNÍ OPTIMALIZACE SPRAVEDLNOSTI
    ========================================================= */
@@ -2110,6 +2034,7 @@ function optimizeSchedule(targets, passes=12){
   }
 }
 
+
 /* =========================================================
    GENERÁTOR
    ========================================================= */
@@ -2119,16 +2044,21 @@ function generate(randomize=false){
   if(!monthKey){ message("Nejdříve vyber měsíc.","err"); return; }
 
   monthFund=Number($("fund").value)||168;
-  settings.dayHours=Number($("dayHours").value)||12;
-  settings.nightHours=Number($("nightHours").value)||12;
-  settings.halfNightHours=Number($("halfNightHours").value)||6;
-  settings.dayNeed=Number($("dayNeed").value)||3;
-  settings.nightNeed=Number($("nightNeed").value)||2;
+  readSettingsFromForm();
 
   const [year,month]=monthKey.split("-").map(Number);
   const totalDays=daysInMonth(year,month);
   const dates=[];
   for(let d=1;d<=totalDays;d++) dates.push(dateStr(year,month,d));
+
+  // Uchováme si směny VŠECH OSTATNÍCH měsíců (hlavně konec předchozího
+  // měsíce), aby na ně generátor mohl při každém pokusu navázat a nesmazal
+  // si je sám pod sebou.
+  const otherMonthShifts={};
+  Object.keys(shifts).forEach(date=>{
+    if(!isCurrentMonthDate(date)) otherMonthShifts[date]=shifts[date];
+  });
+
   const targets=getGenerationTargets();
 
   // Jen několik rychlých variant. Žádné dlouhé zamrzání prohlížeče.
@@ -2136,11 +2066,12 @@ function generate(randomize=false){
   let best=null,bestScore=Infinity,bestWarnings=[];
 
   for(let attempt=0;attempt<attempts;attempt++){
-    shifts={};
+    shifts={...otherMonthShifts};
     const warnings=[];
 
     // Chronologicky – pravidla se tak kontrolují vždy proti skutečně
-    // předchozím dnům. Přechod přes konec měsíce je zachován.
+    // předchozím dnům. Přechod přes konec měsíce je zachován, protože
+    // otherMonthShifts obsahuje i poslední dny předchozího měsíce.
     dates.forEach(date=>{
       const dow=getDayNumber(date);
       const useRandom=randomize || attempt>0;
@@ -2161,7 +2092,7 @@ function generate(randomize=false){
   }
 
   if(!best){
-    shifts={};
+    shifts=otherMonthShifts;
     renderCalendar();
     renderStats();
     message("<b>Směny se nepodařilo bezpečně vygenerovat.</b><br>Pravidla jsou příliš omezená vzhledem k dovoleným a požadavkům.","err");
@@ -2169,6 +2100,7 @@ function generate(randomize=false){
   }
 
   shifts=best;
+  optimizeSchedule(targets);
   renderCalendar();
   renderStats();
   cacheLocal();
@@ -2182,10 +2114,6 @@ function generate(randomize=false){
   }
 }
 
-
-/* =========================================================
-   GENEROVAT ZNOVA
-   ========================================================= */
 
 function generateAgain(){
   generate(true);
@@ -2207,15 +2135,20 @@ function getRequiredForDate(date,type){
 
 function countShiftTypeOnDate(date,type,override){
   const row=override || shifts[date] || {};
-  return Object.values(row).filter(x=>x===type).length;
+  const wantNight=isNightType(type);
+  return Object.values(row).filter(x=> wantNight ? isNightType(x) : x===type).length;
 }
 
 function validateManualChange(candidate){
   const errors=[];
   const [year,month]=monthKey.split("-").map(Number);
   const totalDays=daysInMonth(year,month);
+  const monthStart=`${year}-${String(month).padStart(2,"0")}-01`;
 
-  // Každá sestra: dovolená, požadavky, max 2 směny v řadě, DEN po NOCI.
+  // Sloučíme kandidátní měsíc s ostatními (nedotčenými) měsíci, aby šlo
+  // zkontrolovat i návaznost na předchozí měsíc.
+  const merged={...shifts, ...candidate};
+
   nurses.forEach(nurse=>{
     let run=0;
     let previousType=null;
@@ -2223,9 +2156,9 @@ function validateManualChange(candidate){
     // Začneme dvěma dny před začátkem měsíce, aby se kontroloval
     // i přechod z předchozího měsíce.
     for(let offset=-2; offset<totalDays; offset++){
-      const date=dateOffset(`${year}-${String(month).padStart(2,"0")}-01`,offset);
+      const date=dateOffset(monthStart,offset);
       const inMonth=date.startsWith(monthKey);
-      const type=candidate[date]?.[nurse.id] || null;
+      const type=merged[date]?.[nurse.id] || null;
 
       if(type){
         run++;
@@ -2239,14 +2172,14 @@ function validateManualChange(candidate){
             errors.push(`${nurse.name}: směna v požadavku VOLNO (${date}).`);
           if(type==="D" && rr.some(x=>x.type==="day"))
             errors.push(`${nurse.name}: DEN v omezení bez DEN (${date}).`);
-          if(type==="N" && rr.some(x=>x.type==="night"))
+          if(isNightType(type) && rr.some(x=>x.type==="night"))
             errors.push(`${nurse.name}: NOC v omezení bez NOC (${date}).`);
         }
 
         if(run>=3 && inMonth)
           errors.push(`${nurse.name}: 3 směny za sebou (${date}).`);
 
-        if(previousType==="N" && type==="D" && inMonth)
+        if(isNightType(previousType) && type==="D" && inMonth)
           errors.push(`${nurse.name}: DEN bezprostředně po NOCI (${date}).`);
 
         previousType=type;
@@ -2264,7 +2197,7 @@ function validateManualChange(candidate){
       const need=getRequiredForDate(date,type);
       const have=countShiftTypeOnDate(date,type,candidate[date]);
       if(have<need){
-        errors.push(`${date}: ${type==="D"?"DEN":"NOC"} má ${have}/${need} sester.`);
+        errors.push(`${date}: ${shiftLabel(type)} má ${have}/${need} sester.`);
       }
     });
   }
@@ -2309,7 +2242,7 @@ function setManualShift(sourceDate,sourceNurseId,targetDate,targetNurseId){
     return false;
   }
 
-  shifts=candidate;
+  Object.assign(shifts,candidate);
   selectedShift=null;
   renderCalendar();
   renderStats();
@@ -2320,11 +2253,34 @@ function setManualShift(sourceDate,sourceNurseId,targetDate,targetNurseId){
 
   message(
     `<b>Směny byly prohozeny.</b><br>
-     ${sourceType==="D"?"DEN":"NOC"} byl přesunut na cílovou sestru.
+     ${shiftLabel(sourceType)} byl přesunut na cílovou sestru.
      Statistiky byly okamžitě přepočítány.`,
     "ok"
   );
   return true;
+}
+
+function toggleHalfNight(date,nurseId,ev){
+  ev.stopPropagation();
+  const current=getShift(date,nurseId);
+  if(!isNightType(current)) return;
+
+  const candidate=cloneShifts();
+  candidate[date][nurseId]= current==="N" ? "Nh" : "N";
+
+  // Přepínání "do půlnoci" nemění obsazenost ani pořadí směn, takže
+  // to jde vždy - jen ověříme, že nikde nevznikl jiný problém.
+  const errors=validateManualChange(candidate);
+  if(errors.length){
+    message(`<b>Nelze přepnout.</b><br>${esc(errors.slice(0,3).join(" · "))}`,"err");
+    return;
+  }
+
+  Object.assign(shifts,candidate);
+  renderCalendar();
+  renderStats();
+  cacheLocal();
+  if(sb) saveAll();
 }
 
 function startShiftDrag(ev,date,nurseId,type){
@@ -2419,13 +2375,13 @@ function clickCalendarCell(date,nurseId){
       candidate[date][nurseId]=sourceType;
       const errors=validateManualChange(candidate);
       if(!errors.length){
-        shifts=candidate;
+        Object.assign(shifts,candidate);
         selectedShift=null;
         renderCalendar();
         renderStats();
         cacheLocal();
         if(sb) saveAll();
-        message(`<b>Směna přesunuta.</b><br>${sourceType==='D'?'DEN':'NOC'} byl převeden na jinou sestru. Statistiky byly přepočítány.`,"ok");
+        message(`<b>Směna přesunuta.</b><br>${shiftLabel(sourceType)} byl převeden na jinou sestru. Statistiky byly přepočítány.`,"ok");
         return;
       }
       message(`<b>Směnu nelze přesunout.</b><br>${esc(errors.slice(0,3).join(" · "))}`,"err");
@@ -2439,6 +2395,7 @@ function clickCalendarCell(date,nurseId){
     "err"
   );
 }
+
 /* =========================================================
    KALENDÁŘ
    ========================================================= */
@@ -2451,6 +2408,8 @@ function renderCalendar(){
       `<div class="small">
         Vyber měsíc.
       </div>`;
+
+    $("printMonthTitle").textContent="";
 
     return;
 
@@ -2471,6 +2430,9 @@ function renderCalendar(){
       year,
       month
     );
+
+  $("printMonthTitle").textContent =
+    " – " + month + "/" + year;
 
 
   let html=
@@ -2630,7 +2592,7 @@ function renderCalendar(){
           cell+=`
             <span
               class="badge V"
-              title="Dovolená ${leave.from} – ${leave.to}"
+              title="Dovolená ${leave.from} – ${leave.to} (počítá se do fondu)"
             >
               DOV
             </span>
@@ -2669,24 +2631,23 @@ function renderCalendar(){
 
         if(shift){
 
-          totalHours +=
-            shift==="D"
-            ? settings.dayHours
-            : settings.nightHours;
+          totalHours += hoursForType(shift);
 
+          const isSelected = selectedShift && selectedShift.date===date && String(selectedShift.nurseId)===String(nurse.id);
 
           cell+=`
             <span
-              class="badge ${shift} shift-draggable ${selectedShift && selectedShift.date===date && String(selectedShift.nurseId)===String(nurse.id) ? "shift-selected" : ""}"
+              class="badge ${isNightType(shift) ? (shift==="Nh"?"N2":"N") : "D"} shift-draggable ${isSelected ? "shift-selected" : ""}"
               draggable="true"
-              title="Přetáhni směnu na jiné políčko"
+              title="Přetáhni směnu na jiné políčko, nebo klikni pro výměnu"
               ondragstart="startShiftDrag(event,'${date}','${esc(String(nurse.id))}','${shift}')"
               onclick="clickCalendarShift('${date}','${esc(String(nurse.id))}',event)"
             >
+              ${ shiftLabel(shift) }
               ${
-                shift==="D"
-                ? "DEN"
-                : "NOC"
+                isNightType(shift)
+                ? `<button type="button" class="half-toggle no-print" title="Přepnout NOC / NOC do půlnoci" onclick="toggleHalfNight('${date}','${esc(String(nurse.id))}',event)">½</button>`
+                : ""
               }
             </span>
           `;
@@ -2751,60 +2712,6 @@ function renderCalendar(){
    STATISTIKY
    ========================================================= */
 
-function countLeaveDays(nurseId){
-
-  let count=0;
-
-
-  leaves
-    .filter(
-      x=>sameNurse(x.nurse_id,nurseId)
-    )
-    .forEach(
-      leave=>{
-
-        let current=
-          new Date(
-            leave.from+"T12:00:00"
-          );
-
-        const end=
-          new Date(
-            leave.to+"T12:00:00"
-          );
-
-
-        while(current<=end){
-
-          const date=
-            current
-              .toISOString()
-              .slice(0,10);
-
-
-          if(
-            date.startsWith(
-              monthKey
-            )
-          )
-            count++;
-
-
-          current.setDate(
-            current.getDate()+1
-          );
-
-        }
-
-      }
-    );
-
-
-  return count;
-
-}
-
-
 function renderStats(){
 
   if(!$("statsRows"))
@@ -2840,10 +2747,7 @@ function renderStats(){
 
           weekends:st.weekends,
 
-          leave:
-            countLeaveDays(
-              nurse.id
-            ),
+          leave:st.leaveDays,
 
           target
 
@@ -2853,18 +2757,7 @@ function renderStats(){
     );
 
 
-  const average=
-    data.length
-    ? data.reduce(
-        (sum,x)=>
-          sum+x.hours,
-        0
-      )/data.length
-    : 0;
-
-
-  $("statsRows").innerHTML=
-    data.map(
+  const rowsHtml = data.map(
       x=>`
 
       <tr>
@@ -2882,7 +2775,7 @@ function renderStats(){
         </td>
 
         <td>
-          ${x.hours}
+          ${x.hours.toFixed(1)}
         </td>
 
         <td>
@@ -2916,6 +2809,30 @@ function renderStats(){
       </tr>
     `
     ).join("");
+
+  $("statsRows").innerHTML = rowsHtml;
+
+  const printWrap = $("statsRowsPrintWrap");
+  if(printWrap){
+    printWrap.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th class="left">Sestra</th>
+            <th>Hodiny (vč. dovolené)</th>
+            <th>Směny</th>
+            <th>DEN</th>
+            <th>NOC</th>
+            <th>Víkendy</th>
+            <th>Dovolená (dny)</th>
+            <th>Cíl hodin</th>
+            <th>Rozdíl</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    `;
+  }
 
 
   const totalShifts=
@@ -2987,7 +2904,7 @@ function renderStats(){
 
     <div class="stat">
       <span>Celkem hodin</span>
-      <b>${totalHours}</b>
+      <b>${totalHours.toFixed(1)}</b>
     </div>
 
   `;
@@ -3001,23 +2918,32 @@ function renderStats(){
 
 function clearMonth(){
 
+  if(!monthKey){
+    message("Nejdříve vyber měsíc.","err");
+    return;
+  }
+
   if(
     !confirm(
-      "Opravdu vymazat všechny směny?"
+      "Opravdu vymazat všechny směny tohoto měsíce?"
     )
   )
     return;
 
+  // Smažeme jen dny AKTUÁLNÍHO měsíce - ostatní měsíce zůstávají
+  // beze změny (kvůli návaznosti a historii).
+  Object.keys(shifts).forEach(date=>{
+    if(isCurrentMonthDate(date)) delete shifts[date];
+  });
 
-  shifts={};
-
+  selectedShift=null;
   renderCalendar();
   renderStats();
 
   cacheLocal();
 
   message(
-    "Směny byly vymazány.",
+    "Směny tohoto měsíce byly vymazány.",
     "ok"
   );
 
@@ -3186,8 +3112,7 @@ async function saveAll(){
 
                 date_to:x.to,
 
-                count_in_fund:
-                  x.count_fund
+                count_in_fund:true
 
               })
             )
@@ -3504,9 +3429,7 @@ async function loadSupabase(){
 
           from:normDate(x.date_from ?? x.from),
 
-          to:normDate(x.date_to ?? x.to),
-
-          count_fund:x.count_in_fund !== false
+          to:normDate(x.date_to ?? x.to)
 
         })
       );
@@ -3701,17 +3624,22 @@ function init(){
   $("halfNightHours").value=
     settings.halfNightHours;
 
+  $("leaveHoursPerDay").value=
+    settings.leaveHoursPerDay;
+
   $("dayNeed").value=
     settings.dayNeed;
 
   $("nightNeed").value=
     settings.nightNeed;
 
+  monthKey=$("month").value;
 
   renderNurses();
   renderReq();
   renderCalendar();
   renderStats();
+  renderSettingsSummary();
 
 }
 
