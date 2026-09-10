@@ -132,7 +132,7 @@ table{
 
 th,td{
   border:1px solid #d9e2ea;
-  padding:7px;
+  padding:.55em;
   text-align:center
 }
 
@@ -193,6 +193,12 @@ th{
 .P{
   background:#fce7f3;
   color:#9d174d
+}
+
+.COV{
+  background:#fff3cd;
+  color:#7c4a03;
+  border:1px dashed #e8a33d
 }
 
 .empty{
@@ -273,7 +279,7 @@ th{
 }
 
 .calendar-table{
-  min-width:1200px
+  min-width:90em
 }
 
 .calendar-table th:first-child,
@@ -586,6 +592,16 @@ th{
 
     <span class="badge P">PREFERENCE</span>
 
+    <span class="badge COV">PŘEVZATO JINOU</span>
+
+  </div>
+
+  <div class="actions no-print" style="margin-bottom:12px;align-items:center">
+    <span class="small" style="font-weight:700">Velikost kalendáře:</span>
+    <button onclick="changeCalendarZoom(-1)" title="Zmenšit">A−</button>
+    <span class="small" id="zoomLabel">13px</span>
+    <button onclick="changeCalendarZoom(1)" title="Zvětšit">A+</button>
+    <button onclick="resetCalendarZoom()">Výchozí</button>
   </div>
 
   <div class="small no-print" style="margin-bottom:12px">
@@ -596,7 +612,8 @@ th{
     <b>přiřadit novou směnu</b>.
     U noční směny přepneš tlačítkem <b>½</b> na "pouze do půlnoci" a tlačítkem
     <b>🙋</b> si ji (pokud máš v Nastavení vybrané, která sestra jsi ty) můžeš
-    rovnou převzít.
+    rovnou převzít. Tlačítky <b>▲ ▼</b> u jména sestry můžeš změnit pořadí
+    řádků v kalendáři (např. posunout hlavní sestru nahoru nebo dolů).
     Po každé změně se okamžitě přepočítají statistiky a kontrolují pravidla.
   </div>
 
@@ -635,6 +652,8 @@ th{
       0,5 = 50 %.
       Zaškrtnutím „Hlavní sestra“ se dané sestře přestanou automaticky
       generovat směny – může si ale kdykoliv ručně převzít cizí směnu.
+      Tlačítky ▲ ▼ lze měnit pořadí sester (stejné pořadí se pak
+      použije i v kalendáři).
     </span>
 
   </div>
@@ -650,6 +669,7 @@ th{
 
       <thead>
         <tr>
+          <th></th>
           <th class="left">Jméno</th>
           <th>Úvazek</th>
           <th>Hlavní sestra</th>
@@ -874,7 +894,7 @@ th{
       <input
         id="dayHours"
         type="number"
-        value="12"
+        value="11"
         onchange="applySettingsPreview()"
       >
     </div>
@@ -885,7 +905,7 @@ th{
       <input
         id="nightHours"
         type="number"
-        value="12"
+        value="11"
         onchange="applySettingsPreview()"
       >
     </div>
@@ -981,6 +1001,7 @@ th{
     <li>V ručním režimu (zapíná se v Plánu) lze pravidla u konkrétní směny vědomě porušit – appka se vždy zeptá a porušenou směnu pak v kalendáři označí červeně.</li>
     <li>Kliknutím na prázdné políčko v kalendáři lze sestře rovnou přiřadit novou směnu (DEN / NOC / NOC do půlnoci) bez nutnosti přetahovat existující směnu.</li>
     <li>Sestra označená jako „Hlavní sestra“ (v záložce Sestry) se do automatického generování nepočítá – nedostává směny ani cíl hodin. Může si ale kdykoliv ručně převzít cizí směnu; taková směna je pak v kalendáři označená jako „(HS)“.</li>
+    <li>Když někdo převezme cizí směnu (tlačítko 🙋), zůstane u původní sestry v ten den v kalendáři poznámka, kdo za ni slouží.</li>
   </ul>
 
 </div>
@@ -1039,6 +1060,13 @@ let requests = [];
 // available when generating/validating the current month (continuity rule).
 let shifts = {};
 
+// shiftCoverage tracks, for a given date + ORIGINAL nurse, that her shift
+// was taken over by someone else that day (typically the head nurse).
+// Key: `${date}|${originalNurseId}` -> {byId, byName, type}
+// This is purely local/informational (not written to Supabase, whose
+// schema we don't control) so it lives in localStorage only.
+let shiftCoverage = {};
+
 let monthKey = "";
 let monthFund = 168;
 
@@ -1053,8 +1081,8 @@ let forceMode = false;
 let currentViolations = [];
 
 let settings = {
-  dayHours:12,
-  nightHours:12,
+  dayHours:11,
+  nightHours:11,
   halfNightHours:6,
   leaveHoursPerDay:7.5,
   dayNeed:3,
@@ -1291,6 +1319,91 @@ function message(text,type=""){
 
 
 /* =========================================================
+   LIDSKY ČITELNÉ CHYBOVÉ HLÁŠKY
+   ========================================================= */
+
+// Interní pravidla generují technické hlášky typu
+// "Sestra X: DEN v omezení (2026-10-07)" - tahle funkce je převádí na
+// srozumitelnou větu. Vstupní pole (currentViolations / errors) se
+// NEMĚNÍ - humanizace se dělá až při vypisování, protože jinde v kódu se
+// s technickým tvarem (jméno + datum uvnitř řetězce) ještě pracuje.
+function fmtDate(d){
+  const dt = new Date(d+"T12:00:00");
+  if(isNaN(dt)) return d;
+  const dayNames=["Ne","Po","Út","St","Čt","Pá","So"];
+  return `${dt.getDate()}.${dt.getMonth()+1}. (${dayNames[dt.getDay()]})`;
+}
+
+function nurseWord(n){
+  n=Number(n);
+  if(n===1) return "sestra";
+  if(n>=2 && n<=4) return "sestry";
+  return "sester";
+}
+
+function humanizeViolation(msg){
+
+  let m;
+
+  m = msg.match(/^(.+): směna během dovolené \((\d{4}-\d{2}-\d{2})\)\.?$/);
+  if(m) return `${m[1]} má ${fmtDate(m[2])} dovolenou – nemůže mít zároveň směnu.`;
+
+  m = msg.match(/^(.+): směna (?:ve VOLNU|v požadavku VOLNO) \((\d{4}-\d{2}-\d{2})\)\.?$/);
+  if(m) return `${m[1]} má na ${fmtDate(m[2])} požadavek VOLNO – nemůže dostat směnu.`;
+
+  m = msg.match(/^(.+): DEN v omezení(?: bez DEN)? \((\d{4}-\d{2}-\d{2})\)\.?$/);
+  if(m) return `${m[1]} má na ${fmtDate(m[2])} požadavek „nemůže DEN“, ale byla by jí přiřazená denní směna.`;
+
+  m = msg.match(/^(.+): NOC v omezení(?: bez NOC)? \((\d{4}-\d{2}-\d{2})\)\.?$/);
+  if(m) return `${m[1]} má na ${fmtDate(m[2])} požadavek „nemůže NOC“, ale byla by jí přiřazená noční směna.`;
+
+  m = msg.match(/^(.+): DEN (?:po NOCI|bezprostředně po NOCI) \((\d{4}-\d{2}-\d{2})\)\.?$/);
+  if(m) return `${m[1]} by měla ${fmtDate(m[2])} denní směnu hned po noční z předchozího dne – po noční potřebuje odpočinek.`;
+
+  m = msg.match(/^(.+): čtyři směny za sebou \((\d{4}-\d{2}-\d{2})\)\.?$/);
+  if(m) return `${m[1]} by sloužila čtyři směny v řadě bez volna (do ${fmtDate(m[2])} včetně) – to není povolené, potřebuje si odpočinout.`;
+
+  m = msg.match(/^(.+): tři směny za sebou musí být DEN-DEN-NOC nebo DEN-NOC-NOC \((\d{4}-\d{2}-\d{2})\)\.?$/);
+  if(m) return `${m[1]} by měla tři směny v řadě v jiném pořadí, než je povolené (musí to být DEN-DEN-NOC nebo DEN-NOC-NOC) – kolem ${fmtDate(m[2])}.`;
+
+  m = msg.match(/^(.+): noční směna před nástupem na dovolenou \((\d{4}-\d{2}-\d{2})\)\.?$/);
+  if(m) return `${m[1]} by měla ${fmtDate(m[2])} noční směnu těsně před nástupem na dovolenou – potřebuje si před odjezdem odpočinout.`;
+
+  m = msg.match(/^(.+): noční směna před dnem s požadavkem "nemůže DEN" \((\d{4}-\d{2}-\d{2})\)\.?$/);
+  if(m) return `${m[1]} by měla ${fmtDate(m[2])} noční směnu, ale hned další den nemůže podle svého požadavku sloužit DEN – potřebuje si po noční odpočinout.`;
+
+  m = msg.match(/^(\d{4}-\d{2}-\d{2}): sestra má dvě směny\.?$/);
+  if(m) return `${fmtDate(m[1])}: jedna sestra by měla dvě směny najednou.`;
+
+  m = msg.match(/^(\d{4}-\d{2}-\d{2}): (DEN|NOC|NOC do půlnoci) má (\d+)\/(\d+) sester\.?$/);
+  if(m){
+    const [,date,label,have,need]=m;
+    const smenaLabel = label==="DEN" ? "denní směně" : "noční směně";
+    return `Na ${smenaLabel} (${fmtDate(date)}) musí sloužit ${need} ${nurseWord(need)}, tímto by jich bylo jen ${have}.`;
+  }
+
+  return msg;
+
+}
+
+function humanizeWarning(msg){
+
+  let m = msg.match(/^(\d{4}-\d{2}-\d{2}): (DEN|NOC|NOC do půlnoci) – (\d+)\/(\d+)$/);
+  if(m){
+    const [,date,label,have,need]=m;
+    const smenaLabel = label==="DEN" ? "denní směna" : "noční směna";
+    return `${fmtDate(date)}: ${smenaLabel} obsazena jen ${have} z ${need} potřebných sester.`;
+  }
+
+  m = msg.match(/^(\d{4}-\d{2}-\d{2}): (.+) – po dovolené se nepodařilo zajistit navazující směnu$/);
+  if(m) return `${m[2]} se po návratu z dovolené (${fmtDate(m[1])}) nepodařilo hned zajistit navazující směnu.`;
+
+  return msg;
+
+}
+
+
+/* =========================================================
    SESTRY
    ========================================================= */
 
@@ -1303,6 +1416,26 @@ function renderNurses(){
       (n,i)=>`
 
       <tr>
+
+        <td class="no-print" style="white-space:nowrap">
+
+          <button
+            class="mini-btn"
+            style="border-radius:5px;width:20px;height:18px;background:#e8eef4;color:#18212f"
+            title="Posunout nahoru"
+            ${i===0 ? "disabled" : ""}
+            onclick="moveNurse('${n.id}',-1)"
+          >▲</button>
+
+          <button
+            class="mini-btn"
+            style="border-radius:5px;width:20px;height:18px;background:#e8eef4;color:#18212f"
+            title="Posunout dolů"
+            ${i===nurses.length-1 ? "disabled" : ""}
+            onclick="moveNurse('${n.id}',1)"
+          >▼</button>
+
+        </td>
 
         <td class="left">
 
@@ -1390,6 +1523,7 @@ function addNurse(){
 
   });
 
+  saveNurseOrder();
   renderNurses();
   renderCoverageSummary();
 
@@ -1443,11 +1577,69 @@ function removeNurse(id){
 
   if(settings.selfNurseId===id) settings.selfNurseId="";
 
+  saveNurseOrder();
   renderNurses();
   renderReq();
   renderCalendar();
   renderStats();
   renderCoverageSummary();
+
+}
+
+
+/* =========================================================
+   POŘADÍ SESTER (v Plánu / kalendáři i v záložce Sestry)
+   ========================================================= */
+
+// Supabase dotaz při načítání sester řadí abecedně (.order("name")),
+// takže vlastní pořadí by se po každém načtení ztratilo. Pořadí se proto
+// drží samostatně v localStorage (nezávisle na DB schématu) a po každém
+// načtení sester ze Supabase se na ně znovu aplikuje.
+function loadNurseOrder(){
+  try{
+    return JSON.parse(localStorage.getItem("dialysisNurseOrder")||"[]");
+  }catch(e){
+    return [];
+  }
+}
+
+function saveNurseOrder(){
+  try{
+    localStorage.setItem(
+      "dialysisNurseOrder",
+      JSON.stringify(nurses.map(n=>n.id))
+    );
+  }catch(e){
+    console.warn("Nurse order cache error",e);
+  }
+}
+
+function applyStoredNurseOrder(){
+  const order=loadNurseOrder();
+  if(!order.length) return;
+  const rank = id => {
+    const i=order.indexOf(id);
+    return i<0 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  nurses.sort((a,b)=>rank(a.id)-rank(b.id));
+}
+
+function moveNurse(id,direction){
+
+  const idx=nurses.findIndex(n=>n.id===id);
+  if(idx<0) return;
+
+  const newIdx=idx+direction;
+  if(newIdx<0 || newIdx>=nurses.length) return;
+
+  const tmp=nurses[idx];
+  nurses[idx]=nurses[newIdx];
+  nurses[newIdx]=tmp;
+
+  saveNurseOrder();
+  renderNurses();
+  renderCalendar();
+  renderStats();
 
 }
 
@@ -1790,8 +1982,8 @@ function loadMonth(){
    ========================================================= */
 
 function readSettingsFromForm(){
-  settings.dayHours=Number($("dayHours").value)||12;
-  settings.nightHours=Number($("nightHours").value)||12;
+  settings.dayHours=Number($("dayHours").value)||11;
+  settings.nightHours=Number($("nightHours").value)||11;
   settings.halfNightHours=Number($("halfNightHours").value)||6;
   settings.leaveHoursPerDay=Number($("leaveHoursPerDay").value)||0;
   settings.dayNeed=Number($("dayNeed").value)||1;
@@ -2573,7 +2765,7 @@ function runGenerate(randomize=false){
   cacheLocal();
 
   if(bestWarnings.length){
-    message(`<b>Směny byly vygenerovány.</b><br>Některé směny zůstaly neobsazené (${esc(bestWarnings.slice(0,3).join(" · "))}). Pravidla ale nebyla porušena.`,"err");
+    message(`<b>Směny byly vygenerovány.</b><br>Některé směny zůstaly neobsazené (${esc(bestWarnings.slice(0,3).map(humanizeWarning).join(" · "))}). Pravidla ale nebyla porušena.`,"err");
   }else{
     message(randomize
       ? "<b>Nová varianta směn byla vygenerována.</b><br>Pravidla a rovnoměrné rozdělení byly zachovány."
@@ -2755,6 +2947,11 @@ function cloneShifts(){
 // - S chybami a ZAPNUTÝM ručním režimem -> zeptá se na potvrzení; při
 //   souhlasu se provede i tak a porušená pravidla zůstanou vidět
 //   (banner nahoře + červený rámeček kolem dotčené směny v kalendáři).
+//
+// Kromě toho: po každé úspěšné změně smažeme staré záznamy o "převzetí"
+// (shiftCoverage) pro všechny (datum, sestra) dvojice, kterých se změna
+// dotkla - jakmile se s daným políčkem znovu hne, starý "za tebe slouží"
+// štítek by už neodpovídal skutečnosti.
 function tryApplyManualCandidate(candidate, opts){
   opts = opts || {};
 
@@ -2762,6 +2959,13 @@ function tryApplyManualCandidate(candidate, opts){
 
   function commit(){
     Object.assign(shifts, candidate);
+
+    Object.entries(candidate).forEach(([date,row])=>{
+      Object.keys(row||{}).forEach(nurseId=>{
+        delete shiftCoverage[date+"|"+nurseId];
+      });
+    });
+
     selectedShift=null;
     renderCalendar();
     renderStats();
@@ -2777,7 +2981,7 @@ function tryApplyManualCandidate(candidate, opts){
 
   if(!forceMode){
     message(
-      `<b>Změnu nelze provést.</b><br>${esc(errors.slice(0,4).join(" · "))}`+
+      `<b>Změnu nelze provést.</b><br>${esc(errors.slice(0,4).map(humanizeViolation).join(" · "))}`+
       `<br><span class="small">Zapni „Ruční režim“ v Plánu, pokud to opravdu chceš provést i tak.</span>`,
       "err"
     );
@@ -2786,7 +2990,7 @@ function tryApplyManualCandidate(candidate, opts){
 
   const proceed = confirm(
     "Tato změna poruší pravidla:\n\n- " +
-    errors.slice(0,6).join("\n- ") +
+    errors.slice(0,6).map(humanizeViolation).join("\n- ") +
     (errors.length>6 ? `\n...a ${errors.length-6} další(ch)` : "") +
     "\n\nOpravdu chceš pokračovat i přes porušení pravidel?"
   );
@@ -2796,7 +3000,7 @@ function tryApplyManualCandidate(candidate, opts){
   commit();
   message(
     `${opts.onOverrideMessage || "<b>Změna provedena i přes porušení pravidel.</b>"}`+
-    `<br><span class="small">Porušeno: ${esc(errors.slice(0,3).join(" · "))}</span>`,
+    `<br><span class="small">Porušeno: ${esc(errors.slice(0,3).map(humanizeViolation).join(" · "))}</span>`,
     "err"
   );
   return true;
@@ -2883,12 +3087,25 @@ function takeOverShift(date,nurseId,ev){
 
   candidate[date][selfId]=type;
 
-  tryApplyManualCandidate(candidate, {
+  const applied = tryApplyManualCandidate(candidate, {
     onSuccessMessage:
       `<b>Směna převzata.</b><br>`+
       `${shiftLabel(type)} ${date} sis vzal(a) místo ${esc(otherNurse?.name || "")}.`,
     onOverrideMessage: `<b>Směna převzata i přes porušení pravidel.</b>`
   });
+
+  // Pokud šlo o holé "vzetí" cizí směny (bez výměny za svou), necháme u
+  // původní sestry v ten den poznámku, kdo za ni slouží - aby to viděla
+  // i ona sama v kalendáři, ne jen ten, kdo převzal.
+  if(applied && !selfCurrentType && otherNurse && selfNurse){
+    shiftCoverage[date+"|"+nurseId] = {
+      byId: selfId,
+      byName: selfNurse.name,
+      type
+    };
+    cacheLocal();
+    renderCalendar();
+  }
 }
 
 function startShiftDrag(ev,date,nurseId,type){
@@ -3057,6 +3274,39 @@ function assignFromMenu(type){
 }
 
 /* =========================================================
+   VELIKOST (ZOOM) KALENDÁŘE
+   ========================================================= */
+
+// Kalendář má hodně sloupců (dny) a řádků (sestry), takže se do něj musí
+// hodně scrollovat. Zoom mění velikost písma (a tím i šířku/výšku buněk,
+// protože padding v tabulce je teď v "em") přímo na #calendar kontejneru -
+// to přežije i překreslení (renderCalendar mění jen innerHTML, ne styl
+// obalu), takže se nastavení zoomu nemusí znovu volat po každém renderu.
+let calendarZoom = Number(localStorage.getItem("dialysisCalendarZoom")) || 13;
+const CALENDAR_ZOOM_MIN = 9;
+const CALENDAR_ZOOM_MAX = 22;
+
+function applyCalendarZoom(){
+  const cal=$("calendar");
+  if(cal) cal.style.fontSize = calendarZoom+"px";
+  const label=$("zoomLabel");
+  if(label) label.textContent = calendarZoom+"px";
+}
+
+function changeCalendarZoom(delta){
+  calendarZoom = Math.min(CALENDAR_ZOOM_MAX, Math.max(CALENDAR_ZOOM_MIN, calendarZoom+delta));
+  try{ localStorage.setItem("dialysisCalendarZoom", calendarZoom); }catch(e){}
+  applyCalendarZoom();
+}
+
+function resetCalendarZoom(){
+  calendarZoom = 13;
+  try{ localStorage.setItem("dialysisCalendarZoom", calendarZoom); }catch(e){}
+  applyCalendarZoom();
+}
+
+
+/* =========================================================
    KALENDÁŘ
    ========================================================= */
 
@@ -3105,7 +3355,7 @@ function renderCalendar(){
       banner.innerHTML =
         `⚠ Aktuální plán porušuje <b>${currentViolations.length}</b> pravidel `+
         `(vzniklo v ručním režimu):<br>`+
-        currentViolations.slice(0,8).map(e=>"· "+esc(e)).join("<br>") +
+        currentViolations.slice(0,8).map(e=>"· "+esc(humanizeViolation(e))).join("<br>") +
         (currentViolations.length>8 ? `<br>...a ${currentViolations.length-8} další(ch)` : "");
     }else{
       banner.classList.add("hidden");
@@ -3184,7 +3434,7 @@ function renderCalendar(){
    */
 
   nurses.forEach(
-    nurse=>{
+    (nurse,nurseIdx)=>{
 
       let totalHours=0;
 
@@ -3194,17 +3444,40 @@ function renderCalendar(){
 
           <td class="left">
 
-            <b>
-              ${esc(nurse.name)}
-              ${sameNurse(nurse.id,settings.selfNurseId) ? '<span class="small">(já)</span>' : ''}
-              ${nurse.isHead ? '<span class="small" style="color:#9d174d">(hlavní sestra)</span>' : ''}
-            </b>
+            <div style="display:flex;align-items:flex-start;gap:6px">
 
-            <br>
+              <div class="no-print" style="display:flex;flex-direction:column;gap:2px">
+                <button
+                  class="mini-btn"
+                  style="border-radius:5px;width:16px;height:15px;background:#e8eef4;color:#18212f"
+                  title="Posunout nahoru"
+                  ${nurseIdx===0 ? "disabled" : ""}
+                  onclick="moveNurse('${esc(String(nurse.id))}',-1)"
+                >▲</button>
+                <button
+                  class="mini-btn"
+                  style="border-radius:5px;width:16px;height:15px;background:#e8eef4;color:#18212f"
+                  title="Posunout dolů"
+                  ${nurseIdx===nurses.length-1 ? "disabled" : ""}
+                  onclick="moveNurse('${esc(String(nurse.id))}',1)"
+                >▼</button>
+              </div>
 
-            <span class="small">
-              Úvazek ${nurse.fraction}
-            </span>
+              <div>
+                <b>
+                  ${esc(nurse.name)}
+                  ${sameNurse(nurse.id,settings.selfNurseId) ? '<span class="small">(já)</span>' : ''}
+                  ${nurse.isHead ? '<span class="small" style="color:#9d174d">(hlavní sestra)</span>' : ''}
+                </b>
+
+                <br>
+
+                <span class="small">
+                  Úvazek ${nurse.fraction}
+                </span>
+              </div>
+
+            </div>
 
           </td>
       `;
@@ -3349,6 +3622,30 @@ function renderCalendar(){
 
 
         /*
+         * PŘEVZATO JINOU SESTROU
+         *
+         * Sestra ten den nemá vlastní směnu v datech (byla jí odebrána
+         * při převzetí), ale zůstává tu informace, kdo za ni slouží -
+         * aby to viděla i ona, ne jen ten, kdo směnu vzal.
+         */
+
+        const coverage = !shift ? shiftCoverage[date+"|"+nurse.id] : null;
+
+        if(coverage){
+
+          cell+=`
+            <span
+              class="badge COV"
+              title="${esc(coverage.byName)} slouží místo tebe ${shiftLabel(coverage.type)} (${date})"
+            >
+              Za tebe: ${esc(coverage.byName)}
+            </span>
+          `;
+
+        }
+
+
+        /*
          * Když není nic,
          * zobrazíme tečku.
          */
@@ -3397,6 +3694,8 @@ function renderCalendar(){
 
 
   $("calendar").innerHTML=html;
+
+  applyCalendarZoom();
 
 }
 
@@ -3631,6 +3930,11 @@ function clearMonth(){
     if(isCurrentMonthDate(date)) delete shifts[date];
   });
 
+  Object.keys(shiftCoverage).forEach(key=>{
+    const date=key.split("|")[0];
+    if(isCurrentMonthDate(date)) delete shiftCoverage[key];
+  });
+
   selectedShift=null;
   renderCalendar();
   renderStats();
@@ -3664,6 +3968,8 @@ function cacheLocal(){
         requests,
 
         shifts,
+
+        shiftCoverage,
 
         settings,
 
@@ -4098,6 +4404,10 @@ async function loadSupabase(){
           })
         );
 
+      // Supabase vrací sestry abecedně - aplikujeme na ně naše vlastní
+      // (lokálně uložené) pořadí, pokud nějaké existuje.
+      applyStoredNurseOrder();
+
     }
 
 
@@ -4315,6 +4625,12 @@ function init(){
 
   }
 
+  // Zkusíme obnovit záznamy o převzatých směnách z lokální zálohy.
+  try{
+    const cached = JSON.parse(localStorage.getItem("dialysisPlanner")||"null");
+    if(cached && cached.shiftCoverage) shiftCoverage = cached.shiftCoverage;
+  }catch(e){}
+
 
   $("dayHours").value=
     settings.dayHours;
@@ -4335,6 +4651,8 @@ function init(){
     settings.nightNeed;
 
   monthKey=$("month").value;
+
+  applyCalendarZoom();
 
   renderNurses();
   renderReq();
