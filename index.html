@@ -169,6 +169,12 @@ th{
   color:#5b21b6
 }
 
+.N2{
+  background:#f3e8ff;
+  color:#7e22ce;
+  border:1px dashed #c084fc
+}
+
 .V{
   background:#dcfce7;
   color:#166534
@@ -309,6 +315,22 @@ th{
   cursor:grabbing;
 }
 
+.mini-btn{
+  border:none;
+  background:rgba(255,255,255,.55);
+  color:inherit;
+  border-radius:50%;
+  width:14px;
+  height:14px;
+  line-height:12px;
+  font-size:9px;
+  font-weight:800;
+  padding:0;
+  margin-left:3px;
+  cursor:pointer;
+  vertical-align:middle;
+}
+
 .calendar-cell-editable.drop-target{
   box-shadow:inset 0 0 0 2px #0f718a;
   background:#eefbff;
@@ -319,9 +341,31 @@ th{
   outline-offset:2px;
 }
 
+.shift-violation{
+  outline:2px dashed #dc2626;
+  outline-offset:2px;
+}
+
 .req-note{
   font-size:10px;
   color:#7c3aed
+}
+
+.force-mode-bar{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:13px;
+  font-weight:600;
+}
+
+.violations-banner{
+  background:#fff0f0;
+  border:1px solid #efb1b1;
+  border-radius:10px;
+  padding:10px 14px;
+  margin-bottom:14px;
+  font-size:13px;
 }
 
 .print-only{
@@ -362,6 +406,10 @@ th{
   .calendar-table th:first-child,
   .calendar-table td:first-child{
     position:static
+  }
+
+  .mini-btn{
+    display:none
   }
 }
 </style>
@@ -465,7 +513,20 @@ th{
 
   </div>
 
+  <div class="force-mode-bar no-print" style="margin-top:14px;padding-top:12px;border-top:1px solid #eef1f4">
+    <label style="display:flex;align-items:center;gap:6px;margin:0;font-weight:600">
+      <input type="checkbox" id="forceMode" style="width:auto" onchange="forceMode=this.checked; renderCalendar();">
+      Ruční režim (dovolit porušení pravidel s potvrzením)
+    </label>
+    <span class="small">
+      Když je zapnutý, přesun/výměnu směny jde provést i přes porušení pravidla –
+      appka se nejdřív zeptá, které pravidlo se poruší.
+    </span>
+  </div>
+
 </div>
+
+<div id="violationsBanner" class="violations-banner hidden no-print"></div>
 
 
 <div class="card print-card">
@@ -481,6 +542,8 @@ th{
 
     <span class="badge N">NOC</span>
 
+    <span class="badge N2">NOC do 24h</span>
+
     <span class="badge V">DOV</span>
 
     <span class="badge X">VOLNO</span>
@@ -495,6 +558,9 @@ th{
     Požadavky a dovolené zůstávají v kalendáři viditelné
     i po vygenerování směn. Směnu můžeš <b>přetáhnout myší</b> na jiné políčko,
     případně na směnu kliknout a potom kliknout na cílové políčko.
+    U noční směny přepneš tlačítkem <b>½</b> na "pouze do půlnoci" a tlačítkem
+    <b>🙋</b> si ji (pokud máš v Nastavení vybrané, která sestra jsi ty) můžeš
+    rovnou převzít.
     Po každé změně se okamžitě přepočítají statistiky a kontrolují pravidla.
   </div>
 
@@ -786,6 +852,17 @@ th{
     </div>
 
     <div>
+      <label>Noční „jen do půlnoci“ – hodiny</label>
+
+      <input
+        id="halfNightHours"
+        type="number"
+        value="6"
+        onchange="applySettingsPreview()"
+      >
+    </div>
+
+    <div>
       <label>Dovolená – kredit hodin/den do fondu</label>
 
       <input
@@ -819,6 +896,14 @@ th{
       >
     </div>
 
+    <div>
+      <label>Já / hlavní sestra</label>
+
+      <select id="selfNurse" onchange="settings.selfNurseId=this.value; cacheLocal();">
+        <option value="">— nevybráno —</option>
+      </select>
+    </div>
+
   </div>
 
   <p class="small" id="settingsSummary"></p>
@@ -837,7 +922,7 @@ th{
 
   <ul>
     <li>Tři směny v řadě jsou povolené jen v pořadí DEN-DEN-NOC nebo DEN-NOC-NOC, čtyři a víc směn v řadě nejsou nikdy povolené.</li>
-    <li>Po noční nesmí následující den na denní.</li>
+    <li>Po noční (i „do půlnoci“) nesmí následující den na denní.</li>
     <li>Dovolená blokuje směnu a počítá se do fondu hodin.</li>
     <li>Požadavek „nemůže pracovat“ blokuje směnu.</li>
     <li>„Nemůže DEN“ blokuje pouze DEN, „Nemůže NOC“ blokuje pouze NOC.</li>
@@ -851,6 +936,7 @@ th{
     <li>Pokud je měsíc personálně napjatý a vznikne přesčas, generátor se ho snaží
       po vygenerování ještě přerozdělit tak, aby ho nenesla jen jedna nebo dvě sestry.</li>
     <li>Měsíce na sebe navazují – poslední dny předchozího měsíce se počítají do kontroly (odpočinek, max. směn v řadě).</li>
+    <li>V ručním režimu (zapíná se v Plánu) lze pravidla u konkrétní směny vědomě porušit – appka se vždy zeptá a porušenou směnu pak v kalendáři označí červeně.</li>
   </ul>
 
 </div>
@@ -891,7 +977,7 @@ let nurses = [];
 let leaves = [];
 let requests = [];
 
-// shifts holds EVERY loaded month at once ({date: {nurseId: "D"|"N"}}).
+// shifts holds EVERY loaded month at once ({date: {nurseId: "D"|"N"|"Nh"}}).
 // This is required so that the last days of the previous month remain
 // available when generating/validating the current month (continuity rule).
 let shifts = {};
@@ -899,12 +985,24 @@ let shifts = {};
 let monthKey = "";
 let monthFund = 168;
 
+// Ruční režim: když je zapnutý, manuální přesuny/výměny/převzetí směn smí
+// porušit tvrdá pravidla (s potvrzením), protože situace v provozu je
+// někdy silnější než model v appce. Automatický generátor tohle nikdy
+// neobchází - platí jen pro ruční zásahy hlavní sestry.
+let forceMode = false;
+
+// Poslední spočítaný seznam porušených pravidel (pro banner a červené
+// zvýraznění buněk v kalendáři).
+let currentViolations = [];
+
 let settings = {
   dayHours:12,
   nightHours:12,
+  halfNightHours:6,
   leaveHoursPerDay:7.5,
   dayNeed:3,
-  nightNeed:2
+  nightNeed:2,
+  selfNurseId:""
 };
 
 
@@ -1010,21 +1108,24 @@ function sameNurse(a,b){
   return String(a ?? "").trim() === String(b ?? "").trim();
 }
 
-// A shift cell can hold "D" (day) or "N" (night). These two small helpers
-// are used everywhere instead of comparing strings directly.
+// A shift cell can hold "D" (day), "N" (full night) or "Nh" (night, only
+// until midnight - one of the two required night nurses can be flagged
+// this way when the department is quiet enough after midnight).
 function isNightType(type){
-  return type==="N";
+  return type==="N" || type==="Nh";
 }
 function isDayType(type){
   return type==="D";
 }
 function hoursForType(type){
   if(type==="D") return settings.dayHours;
+  if(type==="Nh") return settings.halfNightHours;
   if(type==="N") return settings.nightHours;
   return 0;
 }
 function shiftLabel(type){
   if(type==="D") return "DEN";
+  if(type==="Nh") return "NOC do 24h";
   if(type==="N") return "NOC";
   return "";
 }
@@ -1152,6 +1253,7 @@ function renderNurses(){
             value="${esc(n.name)}"
             onchange="
               nurses[${i}].name=this.value;
+              renderNurses();
               renderCalendar();
               renderStats();
             "
@@ -1260,6 +1362,8 @@ function removeNurse(id){
 
     });
 
+  if(settings.selfNurseId===id) settings.selfNurseId="";
+
   renderNurses();
   renderReq();
   renderCalendar();
@@ -1284,6 +1388,14 @@ function fillSelects(){
 
   $("leaveNurse").innerHTML=html;
   $("reqNurse").innerHTML=html;
+
+  const selfSelect=$("selfNurse");
+  if(selfSelect){
+    const current=settings.selfNurseId||"";
+    selfSelect.innerHTML =
+      `<option value="">— nevybráno —</option>` + html;
+    selfSelect.value = nurses.some(n=>n.id===current) ? current : "";
+  }
 
 }
 
@@ -1599,9 +1711,12 @@ function loadMonth(){
 function readSettingsFromForm(){
   settings.dayHours=Number($("dayHours").value)||12;
   settings.nightHours=Number($("nightHours").value)||12;
+  settings.halfNightHours=Number($("halfNightHours").value)||6;
   settings.leaveHoursPerDay=Number($("leaveHoursPerDay").value)||0;
   settings.dayNeed=Number($("dayNeed").value)||1;
   settings.nightNeed=Number($("nightNeed").value)||1;
+  const selfSelect=$("selfNurse");
+  if(selfSelect) settings.selfNurseId=selfSelect.value||"";
 }
 
 function applySettingsPreview(){
@@ -1617,8 +1732,8 @@ function renderSettingsSummary(){
   if(!el) return;
   el.innerHTML =
     `Po–pá: <b>${settings.dayNeed}× DEN</b> (${settings.dayHours} h) + `+
-    `<b>${settings.nightNeed}× NOC</b> (${settings.nightHours} h). `+
-    `Sobota: <b>${settings.dayNeed}× DEN</b>. `+
+    `<b>${settings.nightNeed}× NOC</b> (${settings.nightHours} h, případně do půlnoci `+
+    `${settings.halfNightHours} h). Sobota: <b>${settings.dayNeed}× DEN</b>. `+
     `Neděle: <b>${settings.nightNeed}× NOC</b>.`;
 }
 
@@ -1641,7 +1756,7 @@ function isCurrentMonthDate(date){
  * Tvrdá kontrola pro generátor / ruční přesuny:
  * - dovolená / VOLNO / omezení
  * - pouze jedna směna za den
- * - po NOC nesmí následovat DEN
+ * - po NOC (i "do půlnoci") nesmí následovat DEN
  * - tři směny v řadě jsou povolené jen jako DEN-DEN-NOC nebo DEN-NOC-NOC
  * - čtyři (a víc) směny v řadě nejsou nikdy povolené (i napříč hranicí měsíce)
  * - před nástupem na dovolenou nesmí být noční směna
@@ -1674,7 +1789,7 @@ function shiftAllowed(nurse,date,type){
   const threeDaysAgoType=getShift(threeDaysAgo,nurse.id);
 
   /*
-   * Po noční není následující den DEN.
+   * Po noční (i do půlnoci) není následující den DEN.
    */
   if(type==="D" && isNightType(previousType))
     return false;
@@ -1689,8 +1804,8 @@ function shiftAllowed(nurse,date,type){
       return false;
 
     const okTriple =
-      (twoDaysAgoType==="D" && previousType==="D" && type==="N") ||
-      (twoDaysAgoType==="D" && previousType==="N" && type==="N");
+      (twoDaysAgoType==="D" && previousType==="D" && isNightType(type)) ||
+      (twoDaysAgoType==="D" && isNightType(previousType) && isNightType(type));
 
     if(!okTriple)
       return false;
@@ -1804,15 +1919,15 @@ function validateSchedule(){
       }
 
       if(inMonth && isLeave(nurse.id,date))
-        errors.push(`${nurse.name}: směna během dovolené ${date}`);
+        errors.push(`${nurse.name}: směna během dovolené (${date})`);
 
       const rr=getRequests(nurse.id,date);
       if(inMonth && rr.some(x=>x.type==="off"))
-        errors.push(`${nurse.name}: směna ve VOLNU ${date}`);
+        errors.push(`${nurse.name}: směna ve VOLNU (${date})`);
       if(inMonth && type==="D" && rr.some(x=>x.type==="day"))
-        errors.push(`${nurse.name}: DEN v omezení ${date}`);
+        errors.push(`${nurse.name}: DEN v omezení (${date})`);
       if(inMonth && isNightType(type) && rr.some(x=>x.type==="night"))
-        errors.push(`${nurse.name}: NOC v omezení ${date}`);
+        errors.push(`${nurse.name}: NOC v omezení (${date})`);
 
       run++;
 
@@ -1824,8 +1939,8 @@ function validateSchedule(){
 
       if(inMonth && run===3){
         const okTriple =
-          (t2==="D" && t1==="D" && type==="N") ||
-          (t2==="D" && t1==="N" && type==="N");
+          (t2==="D" && t1==="D" && isNightType(type)) ||
+          (t2==="D" && isNightType(t1) && isNightType(type));
         if(!okTriple)
           errors.push(`${nurse.name}: tři směny za sebou musí být DEN-DEN-NOC nebo DEN-NOC-NOC (${date})`);
       }
@@ -2350,8 +2465,8 @@ function validateManualChange(candidate){
 
           if(run===3){
             const okTriple =
-              (t2==="D" && t1==="D" && type==="N") ||
-              (t2==="D" && t1==="N" && type==="N");
+              (t2==="D" && t1==="D" && isNightType(type)) ||
+              (t2==="D" && isNightType(t1) && isNightType(type));
             if(!okTriple)
               errors.push(`${nurse.name}: tři směny za sebou musí být DEN-DEN-NOC nebo DEN-NOC-NOC (${date}).`);
           }
@@ -2388,9 +2503,70 @@ function cloneShifts(){
   return JSON.parse(JSON.stringify(shifts || {}));
 }
 
+
+/* =========================================================
+   SDÍLENÉ PROVEDENÍ RUČNÍ ZMĚNY (respektuje ruční režim)
+   ========================================================= */
+
+// Všechny ruční akce (přesun, výměna, přepnutí půlnoční, převzetí směny)
+// procházejí přes tuhle jednu funkci, aby se ruční režim a označování
+// porušených pravidel chovaly všude stejně.
+//
+// - Bez chyb -> provede se vždy.
+// - S chybami a VYPNUTÝM ručním režimem -> zablokuje se (jako dřív).
+// - S chybami a ZAPNUTÝM ručním režimem -> zeptá se na potvrzení; při
+//   souhlasu se provede i tak a porušená pravidla zůstanou vidět
+//   (banner nahoře + červený rámeček kolem dotčené směny v kalendáři).
+function tryApplyManualCandidate(candidate, opts){
+  opts = opts || {};
+
+  const errors = validateManualChange(candidate);
+
+  function commit(){
+    Object.assign(shifts, candidate);
+    selectedShift=null;
+    renderCalendar();
+    renderStats();
+    cacheLocal();
+    if(sb) saveAll();
+  }
+
+  if(!errors.length){
+    commit();
+    if(opts.onSuccessMessage) message(opts.onSuccessMessage,"ok");
+    return true;
+  }
+
+  if(!forceMode){
+    message(
+      `<b>Změnu nelze provést.</b><br>${esc(errors.slice(0,4).join(" · "))}`+
+      `<br><span class="small">Zapni „Ruční režim“ v Plánu, pokud to opravdu chceš provést i tak.</span>`,
+      "err"
+    );
+    return false;
+  }
+
+  const proceed = confirm(
+    "Tato změna poruší pravidla:\n\n- " +
+    errors.slice(0,6).join("\n- ") +
+    (errors.length>6 ? `\n...a ${errors.length-6} další(ch)` : "") +
+    "\n\nOpravdu chceš pokračovat i přes porušení pravidel?"
+  );
+
+  if(!proceed) return false;
+
+  commit();
+  message(
+    `${opts.onOverrideMessage || "<b>Změna provedena i přes porušení pravidel.</b>"}`+
+    `<br><span class="small">Porušeno: ${esc(errors.slice(0,3).join(" · "))}</span>`,
+    "err"
+  );
+  return true;
+}
+
 function setManualShift(sourceDate,sourceNurseId,targetDate,targetNurseId){
   const sourceType=getShift(sourceDate,sourceNurseId);
-  if(!sourceType) return;
+  if(!sourceType) return false;
 
   const candidate=cloneShifts();
   if(!candidate[sourceDate]) candidate[sourceDate]={};
@@ -2412,31 +2588,69 @@ function setManualShift(sourceDate,sourceNurseId,targetDate,targetNurseId){
     candidate[targetDate][targetNurseId]=sourceType;
   }
 
-  const errors=validateManualChange(candidate);
-  if(errors.length){
-    message(
-      `<b>Směnu nelze přesunout.</b><br>${esc(errors.slice(0,4).join(" · "))}`,
-      "err"
-    );
-    return false;
-  }
+  return tryApplyManualCandidate(candidate, {
+    onSuccessMessage:
+      `<b>Směny byly prohozeny.</b><br>`+
+      `${shiftLabel(sourceType)} byl přesunut na cílovou sestru. `+
+      `Statistiky byly okamžitě přepočítány.`,
+    onOverrideMessage: `<b>Směny byly prohozeny i přes porušení pravidel.</b>`
+  });
+}
 
-  Object.assign(shifts,candidate);
-  selectedShift=null;
+function toggleHalfNight(date,nurseId,ev){
+  ev.stopPropagation();
+  const current=getShift(date,nurseId);
+  if(!isNightType(current)) return;
+
+  // "N" <-> "Nh" je z pohledu VŠECH tvrdých pravidel naprosto stejné -
+  // isNightType() vrací true pro oba, takže žádné pravidlo (odpočinek,
+  // sled směn, dovolená před noční...) mezi nimi nerozlišuje. Mění se
+  // jen hodiny, ne obsazenost ani typ. Proto se to nemusí ověřovat přes
+  // celoplánovou validaci (ta by zbytečně blokovala kvůli JINÉ, nesouvisející
+  // chybě někde jinde v měsíci) - rovnou se to uloží.
+  shifts[date][nurseId] = current==="N" ? "Nh" : "N";
   renderCalendar();
   renderStats();
   cacheLocal();
-
-  // Uloží změnu i do Supabase, aby po obnovení stránky nezmizela.
   if(sb) saveAll();
+}
 
-  message(
-    `<b>Směny byly prohozeny.</b><br>
-     ${shiftLabel(sourceType)} byl přesunut na cílovou sestru.
-     Statistiky byly okamžitě přepočítány.`,
-    "ok"
-  );
-  return true;
+function takeOverShift(date,nurseId,ev){
+  ev.stopPropagation();
+
+  const selfId = settings.selfNurseId;
+  if(!selfId){
+    message("Nejdřív si v Nastavení vyber, která sestra jsi ty.","err");
+    return;
+  }
+  if(sameNurse(selfId,nurseId)) return;
+
+  const type=getShift(date,nurseId);
+  if(!type) return;
+
+  const selfNurse = nurses.find(n=>sameNurse(n.id,selfId));
+  const otherNurse = nurses.find(n=>sameNurse(n.id,nurseId));
+
+  const candidate=cloneShifts();
+  if(!candidate[date]) candidate[date]={};
+
+  const selfCurrentType=getShift(date,selfId);
+
+  delete candidate[date][nurseId];
+
+  if(selfCurrentType){
+    // Ty už ten den sloužíš - jde tedy o výměnu, ne o holé přidání směny.
+    candidate[date][nurseId]=selfCurrentType;
+  }
+
+  candidate[date][selfId]=type;
+
+  tryApplyManualCandidate(candidate, {
+    onSuccessMessage:
+      `<b>Směna převzata.</b><br>`+
+      `${shiftLabel(type)} ${date} sis vzal(a) místo ${esc(otherNurse?.name || "")}.`,
+    onOverrideMessage: `<b>Směna převzata i přes porušení pravidel.</b>`
+  });
 }
 
 function startShiftDrag(ev,date,nurseId,type){
@@ -2518,38 +2732,22 @@ function clickCalendarCell(date,nurseId){
     return;
   }
 
-  // Prázdné políčko ve STEJNÉM dni je bezpečný přesun mezi sestrami:
-  // počet lidí na směně se nezmění.
-  if(selectedShift.date===date){
-    const sourceDate=selectedShift.date;
-    const sourceNurseId=selectedShift.nurseId;
-    const sourceType=getShift(sourceDate,sourceNurseId);
-    if(sourceType){
-      const candidate=cloneShifts();
-      if(!candidate[date]) candidate[date]={};
-      delete candidate[date][sourceNurseId];
-      candidate[date][nurseId]=sourceType;
-      const errors=validateManualChange(candidate);
-      if(!errors.length){
-        Object.assign(shifts,candidate);
-        selectedShift=null;
-        renderCalendar();
-        renderStats();
-        cacheLocal();
-        if(sb) saveAll();
-        message(`<b>Směna přesunuta.</b><br>${shiftLabel(sourceType)} byl převeden na jinou sestru. Statistiky byly přepočítány.`,"ok");
-        return;
-      }
-      message(`<b>Směnu nelze přesunout.</b><br>${esc(errors.slice(0,3).join(" · "))}`,"err");
-      return;
-    }
-  }
+  // Prázdné políčko - přesun na jinou sestru (ve stejném dni je to vždy
+  // bezpečné z hlediska obsazenosti, v jiném dni to validace i tak ověří).
+  const sourceDate=selectedShift.date;
+  const sourceNurseId=selectedShift.nurseId;
+  const sourceType=getShift(sourceDate,sourceNurseId);
+  if(!sourceType) return;
 
-  message(
-    "<b>Na prázdné políčko v jiném dni směnu zatím nelze bezpečně přesunout.</b><br>"+
-    "V jiném dni klikni na směnu jiné sestry – směny se prohodí. Ve stejném dni lze směnu přesunout i na volnou sestru.",
-    "err"
-  );
+  const candidate=cloneShifts();
+  if(!candidate[date]) candidate[date]={};
+  delete candidate[sourceDate][sourceNurseId];
+  candidate[date][nurseId]=sourceType;
+
+  tryApplyManualCandidate(candidate, {
+    onSuccessMessage: `<b>Směna přesunuta.</b><br>${shiftLabel(sourceType)} byl převeden na jinou sestru. Statistiky byly přepočítány.`,
+    onOverrideMessage: `<b>Směna přesunuta i přes porušení pravidel.</b>`
+  });
 }
 
 /* =========================================================
@@ -2589,6 +2787,25 @@ function renderCalendar(){
 
   $("printMonthTitle").textContent =
     " – " + month + "/" + year;
+
+  // Spočítáme aktuální porušení jednou za render - používá se pro banner
+  // i pro červené zvýraznění konkrétních buněk.
+  currentViolations = validateSchedule();
+
+  const banner=$("violationsBanner");
+  if(banner){
+    if(currentViolations.length){
+      banner.classList.remove("hidden");
+      banner.innerHTML =
+        `⚠ Aktuální plán porušuje <b>${currentViolations.length}</b> pravidel `+
+        `(vzniklo v ručním režimu):<br>`+
+        currentViolations.slice(0,8).map(e=>"· "+esc(e)).join("<br>") +
+        (currentViolations.length>8 ? `<br>...a ${currentViolations.length-8} další(ch)` : "");
+    }else{
+      banner.classList.add("hidden");
+      banner.innerHTML="";
+    }
+  }
 
 
   let html=
@@ -2673,6 +2890,7 @@ function renderCalendar(){
 
             <b>
               ${esc(nurse.name)}
+              ${sameNurse(nurse.id,settings.selfNurseId) ? '<span class="small">(já)</span>' : ''}
             </b>
 
             <br>
@@ -2791,15 +3009,31 @@ function renderCalendar(){
 
           const isSelected = selectedShift && selectedShift.date===date && String(selectedShift.nurseId)===String(nurse.id);
 
+          const hasViolation = currentViolations.some(
+            e => e.includes(nurse.name) && e.includes(date)
+          );
+
+          const canTakeOver = settings.selfNurseId && !sameNurse(settings.selfNurseId, nurse.id);
+
           cell+=`
             <span
-              class="badge ${isNightType(shift) ? "N" : "D"} shift-draggable ${isSelected ? "shift-selected" : ""}"
+              class="badge ${isNightType(shift) ? (shift==="Nh"?"N2":"N") : "D"} shift-draggable ${isSelected ? "shift-selected" : ""} ${hasViolation ? "shift-violation" : ""}"
               draggable="true"
-              title="Přetáhni směnu na jiné políčko, nebo klikni pro výměnu"
+              title="${hasViolation ? "Porušuje pravidlo. " : ""}Přetáhni směnu na jiné políčko, nebo klikni pro výměnu"
               ondragstart="startShiftDrag(event,'${date}','${esc(String(nurse.id))}','${shift}')"
               onclick="clickCalendarShift('${date}','${esc(String(nurse.id))}',event)"
             >
               ${ shiftLabel(shift) }
+              ${
+                isNightType(shift)
+                ? `<button type="button" class="mini-btn no-print" title="Přepnout NOC / NOC do půlnoci" onclick="toggleHalfNight('${date}','${esc(String(nurse.id))}',event)">½</button>`
+                : ""
+              }
+              ${
+                canTakeOver
+                ? `<button type="button" class="mini-btn no-print" title="Převzít tuto směnu" onclick="takeOverShift('${date}','${esc(String(nurse.id))}',event)">🙋</button>`
+                : ""
+              }
             </span>
           `;
 
@@ -3771,6 +4005,9 @@ function init(){
 
   $("nightHours").value=
     settings.nightHours;
+
+  $("halfNightHours").value=
+    settings.halfNightHours;
 
   $("leaveHoursPerDay").value=
     settings.leaveHoursPerDay;
