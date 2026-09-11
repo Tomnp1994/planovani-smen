@@ -356,6 +356,47 @@ th{
   font-size:inherit
 }
 
+/* Kalendář "na celou obrazovku" - karta se přepne na fixní vrstvu přes
+   celé okno prohlížeče (funguje spolehlivě všude, včetně mobilů, na
+   rozdíl od nativního Fullscreen API, které má na iOS Safari různá
+   omezení). Lišta se zoomem/tlačítkem zavření zůstane přilepená nahoře,
+   i když se v dlouhé tabulce scrolluje dolů. Vše jen pro obrazovku -
+   při tisku/PDF exportu (@media print výše/níže) se nikdy neuplatní. */
+@media screen{
+
+  #calendarCard.fullscreen-mode{
+    position:fixed;
+    inset:0;
+    z-index:500;
+    margin:0;
+    border-radius:0;
+    max-width:none;
+    width:100vw;
+    height:100vh;
+    overflow:auto;
+    box-shadow:none
+  }
+
+  body.calendar-fullscreen-open{
+    overflow:hidden
+  }
+
+  #calendarCard.fullscreen-mode .zoom-control{
+    position:sticky;
+    top:0;
+    background:#fff;
+    z-index:5;
+    padding-top:8px;
+    padding-bottom:8px;
+    margin-bottom:8px
+  }
+
+  #calendarCard.fullscreen-mode #calendar{
+    max-height:calc(100vh - 230px)
+  }
+
+}
+
 .calendar-table .badge{
   padding:.3em .5em;
   font-size:.85em
@@ -664,7 +705,7 @@ th{
 <div id="violationsBanner" class="violations-banner hidden no-print"></div>
 
 
-<div class="card print-card">
+<div class="card print-card" id="calendarCard">
 
   <h2>
     Kalendář směn
@@ -707,9 +748,10 @@ th{
     <button onclick="changeCalendarZoom(1)" title="Zvětšit" style="padding:6px 11px">+</button>
     <span class="small" id="zoomLabel">13px</span>
     <button onclick="resetCalendarZoom()">Výchozí</button>
+    <button id="btnFullscreenCalendar" onclick="toggleCalendarFullscreen()" title="Zvětšit kalendář na celou obrazovku">⛶ Celá obrazovka</button>
   </div>
 
-  <div class="small no-print" style="margin-bottom:12px">
+  <div class="small no-print" id="calendarHelpText" style="margin-bottom:12px">
     Požadavky a dovolené zůstávají v kalendáři viditelné
     i po vygenerování směn. Směnu můžeš <b>přetáhnout myší</b> na jiné políčko,
     případně na směnu kliknout a potom kliknout na cílové políčko.
@@ -3503,6 +3545,36 @@ function changeCalendarZoom(delta){
 function resetCalendarZoom(){
   setCalendarZoom(13);
 }
+
+
+/* =========================================================
+   KALENDÁŘ NA CELOU OBRAZOVKU
+   ========================================================= */
+
+function toggleCalendarFullscreen(){
+
+  const card = $("calendarCard");
+  const btn = $("btnFullscreenCalendar");
+  if(!card) return;
+
+  const isOpen = card.classList.toggle("fullscreen-mode");
+
+  document.body.classList.toggle("calendar-fullscreen-open", isOpen);
+
+  if(btn) btn.textContent = isOpen ? "✕ Zavřít celou obrazovku" : "⛶ Celá obrazovka";
+
+  if(isOpen) card.scrollTop = 0;
+
+}
+
+function handleCalendarFullscreenEscape(ev){
+  if(ev.key !== "Escape") return;
+  const card = $("calendarCard");
+  if(card && card.classList.contains("fullscreen-mode"))
+    toggleCalendarFullscreen();
+}
+
+document.addEventListener("keydown", handleCalendarFullscreenEscape);
 
 
 /* =========================================================
