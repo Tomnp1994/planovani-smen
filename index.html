@@ -642,9 +642,9 @@ th{
     Kliknutím na <b>prázdné</b> políčko (bez směny) můžeš sestře rovnou
     <b>přiřadit novou směnu</b>.
     U noční směny přepneš tlačítkem <b>½</b> na "pouze do půlnoci" a tlačítkem
-    <b>🙋</b> si ji (pokud jsi v Nastavení vybraná jako hlavní sestra) můžeš
+    <b>🙋</b> si ji (pokud jsi v Nastavení vybraná jako staniční sestra) můžeš
     rovnou převzít. Tlačítky <b>▲ ▼</b> u jména sestry můžeš změnit pořadí
-    řádků v kalendáři (např. posunout hlavní sestru nahoru nebo dolů).
+    řádků v kalendáři (např. posunout staniční sestru nahoru nebo dolů).
     Po každé změně se okamžitě přepočítají statistiky a kontrolují pravidla.
   </div>
 
@@ -681,7 +681,7 @@ th{
       Úvazek 1 = plný úvazek,
       0,75 = 75 %,
       0,5 = 50 %.
-      Zaškrtnutím „Hlavní sestra“ se dané sestře přestanou automaticky
+      Zaškrtnutím „Staniční sestra“ se dané sestře přestanou automaticky
       generovat směny – může si ale kdykoliv ručně převzít cizí směnu.
       Tlačítky ▲ ▼ lze měnit pořadí sester (stejné pořadí se pak
       použije i v kalendáři).
@@ -703,7 +703,7 @@ th{
           <th></th>
           <th class="left">Jméno</th>
           <th>Úvazek</th>
-          <th>Hlavní sestra</th>
+          <th>Staniční sestra</th>
           <th>Akce</th>
         </tr>
       </thead>
@@ -987,7 +987,7 @@ th{
     </div>
 
     <div>
-      <label>Já / hlavní sestra</label>
+      <label>Já / staniční sestra</label>
 
       <select id="selfNurse" onchange="setSelfNurse(this.value)">
         <option value="">— nevybráno —</option>
@@ -1031,8 +1031,8 @@ th{
     <li>Měsíce na sebe navazují – poslední dny předchozího měsíce se počítají do kontroly (odpočinek, max. směn v řadě).</li>
     <li>V ručním režimu (zapíná se v Plánu) lze pravidla u konkrétní směny vědomě porušit – appka se vždy zeptá a porušenou směnu pak v kalendáři označí červeně.</li>
     <li>Kliknutím na prázdné políčko v kalendáři lze sestře rovnou přiřadit novou směnu (DEN / NOC / NOC do půlnoci) bez nutnosti přetahovat existující směnu.</li>
-    <li>Sestra označená jako „Hlavní sestra“ (v záložce Sestry) se do automatického generování nepočítá – nedostává směny ani cíl hodin. Může si ale kdykoliv ručně převzít cizí směnu; taková směna je pak v kalendáři označená jako „(HS)“.</li>
-    <li>Cizí směnu (tlačítko 🙋) smí převzít jen hlavní sestra. Kdo je vybraný jako „já“ v Nastavení, automaticky se mu zaškrtne i „Hlavní sestra“.</li>
+    <li>Sestra označená jako „Staniční sestra“ (v záložce Sestry) se do automatického generování nepočítá – nedostává směny ani cíl hodin. Může si ale kdykoliv ručně převzít cizí směnu; taková směna je pak v kalendáři označená jako „(SS)“.</li>
+    <li>Cizí směnu (tlačítko 🙋) smí převzít jen staniční sestra. Kdo je vybraný jako „já“ v Nastavení, automaticky se mu zaškrtne i „Staniční sestra“.</li>
     <li>Když někdo převezme cizí směnu (tlačítko 🙋), zůstane u původní sestry v ten den v kalendáři poznámka, kdo za ni slouží.</li>
   </ul>
 
@@ -1105,7 +1105,7 @@ let monthFund = 168;
 // Ruční režim: když je zapnutý, manuální přesuny/výměny/převzetí/přiřazení
 // směn smí porušit tvrdá pravidla (s potvrzením), protože situace v provozu
 // je někdy silnější než model v appce. Automatický generátor tohle nikdy
-// neobchází - platí jen pro ruční zásahy hlavní sestry.
+// neobchází - platí jen pro ruční zásahy staniční sestry.
 let forceMode = false;
 
 // Poslední spočítaný seznam porušených pravidel (pro banner a červené
@@ -1506,9 +1506,10 @@ function renderNurses(){
             type="checkbox"
             style="width:auto"
             ${n.isHead ? "checked" : ""}
-            title="Hlavní sestře se negenerují směny automaticky, pouze je může ručně převzít."
+            title="Staniční sestře se negenerují směny automaticky, pouze je může ručně převzít."
             onchange="
               nurses[${i}].isHead=this.checked;
+              ensureSelfDefaultsToHeadNurse();
               renderNurses();
               renderCalendar();
               renderStats();
@@ -2013,11 +2014,25 @@ function loadMonth(){
    NASTAVENÍ – přepočet a shrnutí
    ========================================================= */
 
-// Vybraná "já / hlavní sestra" v Nastavení automaticky dostane
-// zaškrtnuto i "Hlavní sestra" v záložce Sestry - jde prakticky vždy
-// o stejnou osobu a jen přebírání cizích směn (🙋) smí dělat hlavní
+// Vybraná "já / staniční sestra" v Nastavení automaticky dostane
+// zaškrtnuto i "Staniční sestra" v záložce Sestry - jde prakticky vždy
+// o stejnou osobu a jen přebírání cizích směn (🙋) smí dělat staniční
 // sestra, takže tohle propojení zamezí situaci, kdy si někdo vybere
-// sám sebe, ale zapomene se zaškrtnout jako hlavní sestra zvlášť.
+// sám sebe, ale zapomene se zaškrtnout jako staniční sestra zvlášť.
+// Pokud v Nastavení ještě nikdo není vybraný jako "já", a existuje právě
+// jedna (nebo první) staniční sestra, rovnou ji tam defaultně dosadíme -
+// ať to není potřeba po každém načtení appky znovu ručně vybírat.
+function ensureSelfDefaultsToHeadNurse(){
+
+  if(settings.selfNurseId) return;
+
+  const head = nurses.find(n=>n.isHead);
+  if(!head) return;
+
+  settings.selfNurseId = head.id;
+
+}
+
 function setSelfNurse(nurseId){
 
   settings.selfNurseId = nurseId;
@@ -2071,7 +2086,7 @@ function renderSettingsSummary(){
 
 // Ukazuje se v Plánu ještě před kliknutím na "Generovat směny", aby bylo
 // vidět, jestli je měsíc personálně napjatý, dřív než se to musí řešit
-// zpětně přes přesčasy. Hlavní sestra (isHead) se do dostupného fondu
+// zpětně přes přesčasy. Staniční sestra (isHead) se do dostupného fondu
 // nepočítá - generátor jí směny stejně negeneruje automaticky.
 function computeCoverage(){
 
@@ -2133,7 +2148,7 @@ function renderCoverageSummary(){
 
   el.innerHTML =
     `Potřeba na měsíc: <b>${c.requiredHours.toFixed(0)} h</b> · `+
-    `Fond bez hlavní sestry: <b>${c.availableHours.toFixed(0)} h</b> · `+
+    `Fond bez staniční sestry: <b>${c.availableHours.toFixed(0)} h</b> · `+
     (
       shortage
       ? `chybí přibližně <b>${Math.abs(c.diff).toFixed(0)} h</b> personálu (čekej přesčasy).`
@@ -2177,7 +2192,7 @@ function hasNoDayRequestNextDay(nurseId,date){
  */
 function shiftAllowed(nurse,date,type){
 
-  // Hlavní sestře se směny negenerují automaticky - smí je jen ručně
+  // Staniční sestře se směny negenerují automaticky - smí je jen ručně
   // převzít (to jde mimo tuhle funkci, přes validateManualChange).
   if(nurse.isHead)
     return false;
@@ -3059,6 +3074,32 @@ function tryApplyManualCandidate(candidate, opts){
   return true;
 }
 
+// Sdílená pomocná funkce: zaznamená u PŮVODNÍ sestry (v den, kdy o směnu
+// přišla), že ji drží někdo jiný - použije se jak u tlačítka 🙋
+// (takeOverShift), tak u běžného přetažení/přesunu směny myší nebo
+// kliknutím (setManualShift), pokud přesun skončí na staniční sestře.
+// Volá se výhradně u ČISTÉHO přesunu (cílová sestra předtím ten den
+// směnu neměla) - u vzájemné výměny dvou směn si obě sestry pořád
+// pracují, takže by "vykrytí" bylo zavádějící.
+function recordCoverageIfMovedToHeadNurse(fromDate,fromNurseId,toNurseId,type){
+
+  const fromNurse = nurses.find(n=>sameNurse(n.id,fromNurseId));
+  const toNurse = nurses.find(n=>sameNurse(n.id,toNurseId));
+
+  if(!fromNurse || !toNurse || !toNurse.isHead) return;
+  if(sameNurse(fromNurseId,toNurseId)) return;
+
+  shiftCoverage[fromDate+"|"+fromNurseId] = {
+    byId: toNurseId,
+    byName: toNurse.name,
+    type
+  };
+
+  cacheLocal();
+  renderCalendar();
+
+}
+
 function setManualShift(sourceDate,sourceNurseId,targetDate,targetNurseId){
   const sourceType=getShift(sourceDate,sourceNurseId);
   if(!sourceType) return false;
@@ -3068,6 +3109,7 @@ function setManualShift(sourceDate,sourceNurseId,targetDate,targetNurseId){
   if(!candidate[targetDate]) candidate[targetDate]={};
 
   const targetType=getShift(targetDate,targetNurseId);
+  const isPureMove = !targetType; // cílová sestra předtím neměla nic - žádná výměna
 
   // Přesun nebo výměna. Výměna je praktická při ručním přerozdělení.
   delete candidate[sourceDate][sourceNurseId];
@@ -3083,13 +3125,26 @@ function setManualShift(sourceDate,sourceNurseId,targetDate,targetNurseId){
     candidate[targetDate][targetNurseId]=sourceType;
   }
 
-  return tryApplyManualCandidate(candidate, {
+  const applied = tryApplyManualCandidate(candidate, {
     onSuccessMessage:
-      `<b>Směny byly prohozeny.</b><br>`+
-      `${shiftLabel(sourceType)} byl přesunut na cílovou sestru. `+
-      `Statistiky byly okamžitě přepočítány.`,
-    onOverrideMessage: `<b>Směny byly prohozeny i přes porušení pravidel.</b>`
+      isPureMove
+      ? `<b>Směna přesunuta.</b><br>`+
+        `${shiftLabel(sourceType)} byl převeden na cílovou sestru. `+
+        `Statistiky byly okamžitě přepočítány.`
+      : `<b>Směny byly prohozeny.</b><br>`+
+        `${shiftLabel(sourceType)} byl přesunut na cílovou sestru. `+
+        `Statistiky byly okamžitě přepočítány.`,
+    onOverrideMessage:
+      isPureMove
+      ? `<b>Směna přesunuta i přes porušení pravidel.</b>`
+      : `<b>Směny byly prohozeny i přes porušení pravidel.</b>`
   });
+
+  if(applied && isPureMove){
+    recordCoverageIfMovedToHeadNurse(sourceDate,sourceNurseId,targetNurseId,sourceType);
+  }
+
+  return applied;
 }
 
 function toggleHalfNight(date,nurseId,ev){
@@ -3123,7 +3178,7 @@ function takeOverShift(date,nurseId,ev){
   const selfNurse = nurses.find(n=>sameNurse(n.id,selfId));
 
   if(!selfNurse || !selfNurse.isHead){
-    message("Přebírat cizí směny může jen hlavní sestra. V Nastavení zkontroluj, kdo je jako „já“ vybraný.","err");
+    message("Přebírat cizí směny může jen staniční sestra. V Nastavení zkontroluj, kdo je jako „já“ vybraný.","err");
     return;
   }
 
@@ -3156,14 +3211,8 @@ function takeOverShift(date,nurseId,ev){
   // Pokud šlo o holé "vzetí" cizí směny (bez výměny za svou), necháme u
   // původní sestry v ten den poznámku, kdo za ni slouží - aby to viděla
   // i ona sama v kalendáři, ne jen ten, kdo převzal.
-  if(applied && !selfCurrentType && otherNurse && selfNurse){
-    shiftCoverage[date+"|"+nurseId] = {
-      byId: selfId,
-      byName: selfNurse.name,
-      type
-    };
-    cacheLocal();
-    renderCalendar();
+  if(applied && !selfCurrentType){
+    recordCoverageIfMovedToHeadNurse(date,nurseId,selfId,type);
   }
 }
 
@@ -3261,20 +3310,9 @@ function clickCalendarCell(date,nurseId){
 
   // Prázdné políčko - přesun na jinou sestru (ve stejném dni je to vždy
   // bezpečné z hlediska obsazenosti, v jiném dni to validace i tak ověří).
-  const sourceDate=selectedShift.date;
-  const sourceNurseId=selectedShift.nurseId;
-  const sourceType=getShift(sourceDate,sourceNurseId);
-  if(!sourceType) return;
-
-  const candidate=cloneShifts();
-  if(!candidate[date]) candidate[date]={};
-  delete candidate[sourceDate][sourceNurseId];
-  candidate[date][nurseId]=sourceType;
-
-  tryApplyManualCandidate(candidate, {
-    onSuccessMessage: `<b>Směna přesunuta.</b><br>${shiftLabel(sourceType)} byl převeden na jinou sestru. Statistiky byly přepočítány.`,
-    onOverrideMessage: `<b>Směna přesunuta i přes porušení pravidel.</b>`
-  });
+  // Jde o stejnou operaci jako u přetažení myší, proto přes setManualShift
+  // (mimo jiné se tak stejně chová i označení "vykryto staniční sestrou").
+  setManualShift(selectedShift.date,selectedShift.nurseId,date,nurseId);
 }
 
 
@@ -3411,7 +3449,7 @@ function renderCalendar(){
   // i pro červené zvýraznění konkrétních buněk.
   currentViolations = validateSchedule();
 
-  // Přebírat cizí směny (🙋) smí jen hlavní sestra - spočítáme jednou za
+  // Přebírat cizí směny (🙋) smí jen staniční sestra - spočítáme jednou za
   // render, ať se to v cyklu přes buňky jen jednoduše používá.
   const selfNurseForTakeover = nurses.find(n=>sameNurse(n.id,settings.selfNurseId));
   const selfIsHeadNurse = !!(selfNurseForTakeover && selfNurseForTakeover.isHead);
@@ -3535,7 +3573,7 @@ function renderCalendar(){
                 <b>
                   ${esc(nurse.name)}
                   ${sameNurse(nurse.id,settings.selfNurseId) ? '<span class="small">(já)</span>' : ''}
-                  ${nurse.isHead ? '<span class="small" style="color:#9d174d">(hlavní sestra)</span>' : ''}
+                  ${nurse.isHead ? '<span class="small" style="color:#9d174d">(staniční sestra)</span>' : ''}
                 </b>
 
                 <br>
@@ -3667,12 +3705,12 @@ function renderCalendar(){
             <span
               class="badge ${isNightType(shift) ? (shift==="Nh"?"N2":"N") : "D"} shift-draggable ${isSelected ? "shift-selected" : ""} ${hasViolation ? "shift-violation" : ""}"
               draggable="true"
-              title="${hasViolation ? "Porušuje pravidlo. " : ""}${nurse.isHead ? "Převzala hlavní sestra. " : ""}Přetáhni směnu na jiné políčko, nebo klikni pro výměnu"
+              title="${hasViolation ? "Porušuje pravidlo. " : ""}${nurse.isHead ? "Převzala staniční sestra. " : ""}Přetáhni směnu na jiné políčko, nebo klikni pro výměnu"
               ondragstart="startShiftDrag(event,'${date}','${esc(String(nurse.id))}','${shift}')"
               onclick="clickCalendarShift('${date}','${esc(String(nurse.id))}',event)"
             >
               ${ shiftLabel(shift) }
-              ${ nurse.isHead ? '<span class="small" style="opacity:.85">(HS)</span>' : '' }
+              ${ nurse.isHead ? '<span class="small" style="opacity:.85">(SS)</span>' : '' }
               ${
                 isNightType(shift)
                 ? `<button type="button" class="mini-btn no-print" title="Přepnout NOC / NOC do půlnoci" onclick="toggleHalfNight('${date}','${esc(String(nurse.id))}',event)">½</button>`
@@ -4508,6 +4546,8 @@ async function loadSupabase(){
       if(!usedSortOrderColumn)
         applyStoredNurseOrder();
 
+      ensureSelfDefaultsToHeadNurse();
+
     }
 
 
@@ -4750,6 +4790,8 @@ function init(){
     const cached = JSON.parse(localStorage.getItem("dialysisPlanner")||"null");
     if(cached && cached.shiftCoverage) shiftCoverage = cached.shiftCoverage;
   }catch(e){}
+
+  ensureSelfDefaultsToHeadNurse();
 
 
   $("dayHours").value=
