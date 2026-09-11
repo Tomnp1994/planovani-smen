@@ -279,7 +279,28 @@ th{
 }
 
 .calendar-table{
-  min-width:90em
+  min-width:90em;
+  font-size:inherit
+}
+
+.calendar-table .badge{
+  padding:.3em .5em;
+  font-size:.85em
+}
+
+.calendar-table .small{
+  font-size:.85em
+}
+
+.calendar-table .mini-btn{
+  width:1.15em;
+  height:1.15em;
+  font-size:.7em;
+  line-height:1.1em
+}
+
+.calendar-table .req-note{
+  font-size:.8em
 }
 
 .calendar-table th:first-child,
@@ -596,11 +617,21 @@ th{
 
   </div>
 
-  <div class="actions no-print" style="margin-bottom:12px;align-items:center">
-    <span class="small" style="font-weight:700">Velikost kalendáře:</span>
-    <button onclick="changeCalendarZoom(-1)" title="Zmenšit">A−</button>
+  <div class="actions no-print" style="margin-bottom:12px;align-items:center;gap:10px">
+    <span class="small" style="font-weight:700">Velikost kalendáře</span>
+    <button onclick="changeCalendarZoom(-1)" title="Zmenšit" style="padding:6px 11px">−</button>
+    <input
+      id="zoomSlider"
+      type="range"
+      min="9"
+      max="22"
+      step="1"
+      value="13"
+      style="width:160px;accent-color:#0f718a"
+      oninput="setCalendarZoom(this.value)"
+    >
+    <button onclick="changeCalendarZoom(1)" title="Zvětšit" style="padding:6px 11px">+</button>
     <span class="small" id="zoomLabel">13px</span>
-    <button onclick="changeCalendarZoom(1)" title="Zvětšit">A+</button>
     <button onclick="resetCalendarZoom()">Výchozí</button>
   </div>
 
@@ -611,7 +642,7 @@ th{
     Kliknutím na <b>prázdné</b> políčko (bez směny) můžeš sestře rovnou
     <b>přiřadit novou směnu</b>.
     U noční směny přepneš tlačítkem <b>½</b> na "pouze do půlnoci" a tlačítkem
-    <b>🙋</b> si ji (pokud máš v Nastavení vybrané, která sestra jsi ty) můžeš
+    <b>🙋</b> si ji (pokud jsi v Nastavení vybraná jako hlavní sestra) můžeš
     rovnou převzít. Tlačítky <b>▲ ▼</b> u jména sestry můžeš změnit pořadí
     řádků v kalendáři (např. posunout hlavní sestru nahoru nebo dolů).
     Po každé změně se okamžitě přepočítají statistiky a kontrolují pravidla.
@@ -958,7 +989,7 @@ th{
     <div>
       <label>Já / hlavní sestra</label>
 
-      <select id="selfNurse" onchange="settings.selfNurseId=this.value; cacheLocal();">
+      <select id="selfNurse" onchange="setSelfNurse(this.value)">
         <option value="">— nevybráno —</option>
       </select>
     </div>
@@ -1001,6 +1032,7 @@ th{
     <li>V ručním režimu (zapíná se v Plánu) lze pravidla u konkrétní směny vědomě porušit – appka se vždy zeptá a porušenou směnu pak v kalendáři označí červeně.</li>
     <li>Kliknutím na prázdné políčko v kalendáři lze sestře rovnou přiřadit novou směnu (DEN / NOC / NOC do půlnoci) bez nutnosti přetahovat existující směnu.</li>
     <li>Sestra označená jako „Hlavní sestra“ (v záložce Sestry) se do automatického generování nepočítá – nedostává směny ani cíl hodin. Může si ale kdykoliv ručně převzít cizí směnu; taková směna je pak v kalendáři označená jako „(HS)“.</li>
+    <li>Cizí směnu (tlačítko 🙋) smí převzít jen hlavní sestra. Kdo je vybraný jako „já“ v Nastavení, automaticky se mu zaškrtne i „Hlavní sestra“.</li>
     <li>Když někdo převezme cizí směnu (tlačítko 🙋), zůstane u původní sestry v ten den v kalendáři poznámka, kdo za ni slouží.</li>
   </ul>
 
@@ -1063,8 +1095,8 @@ let shifts = {};
 // shiftCoverage tracks, for a given date + ORIGINAL nurse, that her shift
 // was taken over by someone else that day (typically the head nurse).
 // Key: `${date}|${originalNurseId}` -> {byId, byName, type}
-// This is purely local/informational (not written to Supabase, whose
-// schema we don't control) so it lives in localStorage only.
+// Persists to Supabase via the "covered_for" column on the shifts table
+// (falls back to localStorage only if that column doesn't exist yet).
 let shiftCoverage = {};
 
 let monthKey = "";
@@ -1980,6 +2012,27 @@ function loadMonth(){
 /* =========================================================
    NASTAVENÍ – přepočet a shrnutí
    ========================================================= */
+
+// Vybraná "já / hlavní sestra" v Nastavení automaticky dostane
+// zaškrtnuto i "Hlavní sestra" v záložce Sestry - jde prakticky vždy
+// o stejnou osobu a jen přebírání cizích směn (🙋) smí dělat hlavní
+// sestra, takže tohle propojení zamezí situaci, kdy si někdo vybere
+// sám sebe, ale zapomene se zaškrtnout jako hlavní sestra zvlášť.
+function setSelfNurse(nurseId){
+
+  settings.selfNurseId = nurseId;
+
+  const nurse = nurses.find(n=>sameNurse(n.id,nurseId));
+
+  if(nurse && !nurse.isHead){
+    nurse.isHead = true;
+    renderNurses();
+  }
+
+  renderCalendar();
+  cacheLocal();
+
+}
 
 function readSettingsFromForm(){
   settings.dayHours=Number($("dayHours").value)||11;
@@ -3067,10 +3120,16 @@ function takeOverShift(date,nurseId,ev){
   }
   if(sameNurse(selfId,nurseId)) return;
 
+  const selfNurse = nurses.find(n=>sameNurse(n.id,selfId));
+
+  if(!selfNurse || !selfNurse.isHead){
+    message("Přebírat cizí směny může jen hlavní sestra. V Nastavení zkontroluj, kdo je jako „já“ vybraný.","err");
+    return;
+  }
+
   const type=getShift(date,nurseId);
   if(!type) return;
 
-  const selfNurse = nurses.find(n=>sameNurse(n.id,selfId));
   const otherNurse = nurses.find(n=>sameNurse(n.id,nurseId));
 
   const candidate=cloneShifts();
@@ -3289,20 +3348,24 @@ const CALENDAR_ZOOM_MAX = 22;
 function applyCalendarZoom(){
   const cal=$("calendar");
   if(cal) cal.style.fontSize = calendarZoom+"px";
+  const slider=$("zoomSlider");
+  if(slider) slider.value = calendarZoom;
   const label=$("zoomLabel");
   if(label) label.textContent = calendarZoom+"px";
 }
 
-function changeCalendarZoom(delta){
-  calendarZoom = Math.min(CALENDAR_ZOOM_MAX, Math.max(CALENDAR_ZOOM_MIN, calendarZoom+delta));
+function setCalendarZoom(value){
+  calendarZoom = Math.min(CALENDAR_ZOOM_MAX, Math.max(CALENDAR_ZOOM_MIN, Number(value)||13));
   try{ localStorage.setItem("dialysisCalendarZoom", calendarZoom); }catch(e){}
   applyCalendarZoom();
 }
 
+function changeCalendarZoom(delta){
+  setCalendarZoom(calendarZoom+delta);
+}
+
 function resetCalendarZoom(){
-  calendarZoom = 13;
-  try{ localStorage.setItem("dialysisCalendarZoom", calendarZoom); }catch(e){}
-  applyCalendarZoom();
+  setCalendarZoom(13);
 }
 
 
@@ -3347,6 +3410,11 @@ function renderCalendar(){
   // Spočítáme aktuální porušení jednou za render - používá se pro banner
   // i pro červené zvýraznění konkrétních buněk.
   currentViolations = validateSchedule();
+
+  // Přebírat cizí směny (🙋) smí jen hlavní sestra - spočítáme jednou za
+  // render, ať se to v cyklu přes buňky jen jednoduše používá.
+  const selfNurseForTakeover = nurses.find(n=>sameNurse(n.id,settings.selfNurseId));
+  const selfIsHeadNurse = !!(selfNurseForTakeover && selfNurseForTakeover.isHead);
 
   const banner=$("violationsBanner");
   if(banner){
@@ -3593,7 +3661,7 @@ function renderCalendar(){
             e => e.includes(nurse.name) && e.includes(date)
           );
 
-          const canTakeOver = settings.selfNurseId && !sameNurse(settings.selfNurseId, nurse.id);
+          const canTakeOver = selfIsHeadNurse && !sameNurse(settings.selfNurseId, nurse.id);
 
           cell+=`
             <span
@@ -4049,7 +4117,7 @@ async function saveAll(){
         .upsert(
 
           nurses.map(
-            nurse=>({
+            (nurse,idx)=>({
 
               id:nurse.id,
 
@@ -4059,7 +4127,9 @@ async function saveAll(){
 
               active:true,
 
-              is_head: !!nurse.isHead
+              is_head: !!nurse.isHead,
+
+              sort_order: idx
 
             })
           ),
@@ -4207,6 +4277,17 @@ async function saveAll(){
 
     const shiftRows=[];
 
+    // shiftCoverage je keyovaný "date|originalNurseId" a obsahuje, KDO
+    // (byId) tu směnu drží teď. Pro uložení potřebujeme opačný směr:
+    // pro danou (date, nurseId-co-drží-směnu) najít, za koho ji drží.
+    const coveredForBySlot={};
+    Object.entries(shiftCoverage).forEach(
+      ([key,cov])=>{
+        const [date,originalId]=key.split("|");
+        coveredForBySlot[date+"|"+cov.byId]=originalId;
+      }
+    );
+
 
     Object.entries(shifts)
       .forEach(
@@ -4222,7 +4303,9 @@ async function saveAll(){
 
                   nurse_id:nurseId,
 
-                  shift_type:type
+                  shift_type:type,
+
+                  covered_for: coveredForBySlot[date+"|"+nurseId] || null
 
                 });
 
@@ -4366,17 +4449,33 @@ async function loadSupabase(){
      * SEStry
      */
 
+    // Řadíme podle sort_order (naše vlastní pořadí, sdílené přes
+    // Supabase). Pokud sloupec sort_order v DB ještě neexistuje (starší
+    // databáze, kde ještě neproběhla migrace), dotaz spadne - v tom
+    // případě to zkusíme znovu jen s řazením podle jména a doplníme
+    // pořadí aspoň z lokální zálohy prohlížeče.
     let result=
       await sb
         .from("nurses")
         .select("*")
-        .eq(
-          "active",
-          true
-        )
-        .order(
-          "name"
-        );
+        .eq("active",true)
+        .order("sort_order",{ascending:true,nullsFirst:false})
+        .order("name");
+
+    let usedSortOrderColumn=true;
+
+    if(result.error){
+
+      usedSortOrderColumn=false;
+
+      result=
+        await sb
+          .from("nurses")
+          .select("*")
+          .eq("active",true)
+          .order("name");
+
+    }
 
 
     const nurseData=
@@ -4404,9 +4503,10 @@ async function loadSupabase(){
           })
         );
 
-      // Supabase vrací sestry abecedně - aplikujeme na ně naše vlastní
-      // (lokálně uložené) pořadí, pokud nějaké existuje.
-      applyStoredNurseOrder();
+      // Sloupec sort_order zatím v DB není (migrace neproběhla) - jako
+      // náhradu použijeme aspoň lokálně uložené pořadí z tohoto prohlížeče.
+      if(!usedSortOrderColumn)
+        applyStoredNurseOrder();
 
     }
 
@@ -4497,6 +4597,7 @@ async function loadSupabase(){
 
 
     shifts={};
+    shiftCoverage={};
 
 
     (shiftData||[])
@@ -4508,6 +4609,25 @@ async function loadSupabase(){
 
           shifts[x.date][x.nurse_id]=
             x.shift_type;
+
+          if(x.covered_for){
+
+            const byNurse=
+              nurses.find(
+                n=>sameNurse(n.id,x.nurse_id)
+              );
+
+            shiftCoverage[x.date+"|"+x.covered_for]={
+
+              byId:x.nurse_id,
+
+              byName: byNurse ? byNurse.name : "?",
+
+              type:x.shift_type
+
+            };
+
+          }
 
         }
       );
