@@ -278,6 +278,79 @@ th{
   margin:10px 0 15px
 }
 
+@media(max-width:700px){
+
+  .wrap{
+    padding:10px
+  }
+
+  header{
+    padding:14px 16px
+  }
+
+  header h1{
+    font-size:18px
+  }
+
+  .card{
+    padding:12px;
+    border-radius:10px
+  }
+
+  .stats{
+    grid-template-columns:repeat(2,1fr)
+  }
+
+  .force-mode-bar{
+    align-items:flex-start;
+    flex-direction:column
+  }
+
+  /* Kalendář: sloupec se jménem sestry zabírá na úzkém displeji moc
+     místa, tak ho zúžíme a schováme "Úvazek X" (ten zůstává vidět
+     v záložce Sestry) - ať je na obrazovce vidět víc dní naráz. */
+  .calendar-table{
+    min-width:62em
+  }
+
+  .calendar-table th:first-child,
+  .calendar-table td:first-child{
+    max-width:118px
+  }
+
+  .calendar-table .cal-fraction{
+    display:none
+  }
+
+  /* Dotykové plochy malých tlačítek (½, 🙋, ▲▼) škálují s zoomem
+     kalendáře, ale na mobilu musí mít rozumnou minimální velikost na
+     ťuknutí prstem bez ohledu na to, jak moc si kalendář zmenšíš. */
+  .calendar-table .mini-btn{
+    min-width:20px;
+    min-height:20px;
+    font-size:11px;
+    line-height:18px
+  }
+
+  .zoom-control{
+    flex-wrap:wrap
+  }
+
+  #zoomSlider{
+    width:120px
+  }
+
+}
+
+@media(max-width:420px){
+
+  .calendar-table th:first-child,
+  .calendar-table td:first-child{
+    max-width:88px
+  }
+
+}
+
 .calendar-table{
   min-width:90em;
   font-size:inherit
@@ -618,7 +691,7 @@ th{
 
   </div>
 
-  <div class="actions no-print" style="margin-bottom:12px;align-items:center;gap:10px">
+  <div class="actions no-print zoom-control" style="margin-bottom:12px;align-items:center;gap:10px">
     <span class="small" style="font-weight:700">Velikost kalendáře</span>
     <button onclick="changeCalendarZoom(-1)" title="Zmenšit" style="padding:6px 11px">−</button>
     <input
@@ -2519,6 +2592,16 @@ function generatorScore(nurse,date,type,targets,randomize=false){
       score -= 400;
   }
 
+  // Preference (prefer DEN / prefer NOC) je měkké kritérium - mírně
+  // zvýhodní shodu s preferencí a mírně znevýhodní opačný typ směny,
+  // ale nikdy nepřebije fond hodin ani rovnoměrné rozdělení víkendů
+  // (ty mají řádově vyšší váhu výše).
+  const rr=getRequests(nurse.id,date);
+  if(rr.some(x=>x.type==="preferDay"))
+    score += isDayType(type) ? -150 : 150;
+  if(rr.some(x=>x.type==="preferNight"))
+    score += isNightType(type) ? -150 : 150;
+
   if(randomize) score += Math.random()*0.15;
   return score;
 }
@@ -2632,6 +2715,20 @@ function scheduleFairnessScore(targets){
         if(saturdayRow[id]) score -= 150;
       });
     });
+
+  // Preference (prefer DEN / prefer NOC) - stejné měkké kritérium jako
+  // v generatorScore(), jen sečtené přes celý měsíc. Menší váha na
+  // jednotlivou směnu, protože se tu sčítá přes desítky směn najednou.
+  Object.entries(shifts).forEach(([date,row])=>{
+    if(!isCurrentMonthDate(date)) return;
+    Object.entries(row).forEach(([nurseId,type])=>{
+      const rr=getRequests(nurseId,date);
+      if(rr.some(x=>x.type==="preferDay"))
+        score += isDayType(type) ? -50 : 50;
+      if(rr.some(x=>x.type==="preferNight"))
+        score += isNightType(type) ? -50 : 50;
+    });
+  });
 
   return score;
 }
@@ -3380,7 +3477,7 @@ function assignFromMenu(type){
 // protože padding v tabulce je teď v "em") přímo na #calendar kontejneru -
 // to přežije i překreslení (renderCalendar mění jen innerHTML, ne styl
 // obalu), takže se nastavení zoomu nemusí znovu volat po každém renderu.
-let calendarZoom = Number(localStorage.getItem("dialysisCalendarZoom")) || 13;
+let calendarZoom = Number(localStorage.getItem("dialysisCalendarZoom")) || (window.innerWidth<700 ? 15 : 13);
 const CALENDAR_ZOOM_MIN = 9;
 const CALENDAR_ZOOM_MAX = 22;
 
@@ -3579,7 +3676,7 @@ function renderCalendar(){
 
                 <br>
 
-                <span class="small">
+                <span class="small cal-fraction">
                   Úvazek ${nurse.fraction}
                 </span>
               </div>
